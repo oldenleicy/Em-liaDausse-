@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Emília Daússe Connect</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    /*******************************************************************************
+     * NAVEGAÇÃO SUPERIOR (BARRA PRINCIPAL & HAMBÚRGUER)
+     *******************************************************************************/
+    <nav class="navbar">
+        <button class="hamburger-btn" onclick="toggleMenu()">☰</button>
+        <div class="nav-logo">🏫 ED Connect</div>
+        <div class="nav-user" id="navUserArea">
+            <button onclick="showModal('authModal')" class="btn-primary">Entrar</button>
+        </div>
+    </nav>
+
+    <div id="sidebarMenu" class="sidebar">
+        <button class="close-sidebar" onclick="toggleMenu()">×</button>
+        <div class="sidebar-header">
+            <h3 id="sidebarUserName">Menu Escolar</h3>
+        </div>
+        <ul class="sidebar-links">
+            <li><a href="#" onclick="showModal('libraryModal'); toggleMenu();">📚 Biblioteca Virtual</a></li>
+            <li><a href="#" onclick="showModal('suggestModal'); toggleMenu();">✍️ Enviar Sugestão</a></li>
+            <li><a href="#" onclick="showModal('settingsModal'); toggleMenu();">⚙️ Definições da Conta</a></li>
+            
+            <li id="menu-chef-comunidades" style="display:none;"><a href="#" onclick="showModal('communitiesModal'); toggleMenu();">🛡️ Gerir Comunidades</a></li>
+            <li id="menu-dev-sugestoes" style="display:none;"><a href="#" onclick="showModal('viewSuggestionsModal'); toggleMenu();">📩 Ver Sugestões (Dev)</a></li>
+            <li id="menu-dev-supremo" style="display:none;"><a href="#" onclick="showModal('devSupremoModal'); toggleMenu();">👑 Painel Dev Supremo</a></li>
+        </ul>
+    </div>
+
+    /*******************************************************************************
+     * CONTEÚDO PRINCIPAL DA TELA INICIAL (VISÍVEL PARA TODOS)
+     *******************************************************************************/
+    <main class="container">
+        
+        <section class="vote-section">
+            <h2>🗳️ O que devemos construir a seguir?</h2>
+            <div class="vote-box">
+                <div class="vote-option" onclick="registerVote('agenda')">
+                    <span>📅 1. Agenda Escolar Dinâmica</span>
+                    <span id="votos-agenda">0 votos</span>
+                </div>
+                <div class="vote-option" onclick="registerVote('quiz')">
+                    <span>📝 2. Quiz de Preparação para Exames</span>
+                    <span id="votos-quiz">0 votos</span>
+                </div>
+            </div>
+        </section>
+
+        <section class="news-section">
+            <h2>📢 Novidades e Avisos da Escola</h2>
+            <div class="news-grid" id="newsGrid"></div>
+        </section>
+
+        <section class="features-grid">
+            <div class="card dev-card">
+                <div class="ribbon">Em Desenvolvimento</div>
+                <h3>🤟 Tradutor de Libras por Câmera</h3>
+                <p>Inclusão através de IA que traduz Língua de Sinais pela câmara do telemóvel.</p>
+                <button class="btn-disabled" disabled>Bloqueado</button>
+            </div>
+        </section>
+    </main>
+
+    /*******************************************************************************
+     * JANELAS MODAIS (INTERFACES OCULTAS QUE ABREM VIA DIÁLOGO)
+     *******************************************************************************/
+    
+    <div id="authModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal('authModal')">&times;</span>
+            <h2>Registo de Usuário</h2>
+            <form id="authForm" onsubmit="handleAuth(event)">
+                <input type="text" id="authNomeCompleto" placeholder="Nome Completo" required>
+                <input type="email" id="authEmail" placeholder="E-mail de Verificação" required>
+                <input type="password" id="authPassword" placeholder="Defina a sua Password" required>
+                
+                <div class="form-row">
+                    <input type="text" id="authClasse" placeholder="Classe (Ex: 12º)" required>
+                    <input type="text" id="authTurma" placeholder="Turma (Ex: 03)" required>
+                    <input type="text" id="authSala" placeholder="Sala (Ex: 4)" required>
+                </div>
+                <input type="number" id="authIdade" placeholder="Idade" required>
+                <input type="password" id="authChave" placeholder="Chave de Acesso (Opcional)">
+                <button type="submit" class="btn-primary full-width">Criar Conta e Entrar</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="settingsModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal('settingsModal')">&times;</span>
+            <h2>⚙️ Definições da Conta</h2>
+            <p>Se recebeu uma chave de acesso da direção ou do programador, insira-a abaixo para ativar novas funções:</p>
+            <div style="margin-top: 15px;">
+                <input type="password" id="upgradeChaveInput" placeholder="Introduzir nova Chave de Acesso">
+                <button onclick="applyKeyUpgrade()" class="btn-primary full-width">Atualizar Cargo</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="libraryModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal('libraryModal')">&times;</span>
+            <h2>📚 Biblioteca Virtual</h2>
+            <ul id="bookList" style="margin-top: 15px; padding-left: 20px;">
+                <li><strong>Filosofia:</strong> A Retórica - Aristóteles</li>
+                <li><strong>Matemática:</strong> Geometria Espacial 12ª Classe</li>
+            </ul>
+        </div>
+    </div>
+
+    <div id="suggestModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal('suggestModal')">&times;</span>
+            <h2>✍️ Enviar Sugestão ao Dev</h2>
+            <textarea id="suggestionText" placeholder="Escreva a sua mensagem para o desenvolvedor..." style="width:100%; height:100px; margin:10px 0; padding:8px;"></textarea>
+            <button onclick="submitSuggestion()" class="btn-primary full-width">Enviar Mensagem</button>
+        </div>
+    </div>
+
+    <div id="viewSuggestionsModal" class="modal">
+        <div class="modal-content" style="max-width: 600px;">
+            <span class="close" onclick="closeModal('viewSuggestionsModal')">&times;</span>
+            <h2>📩 Caixa de Sugestões Recebidas</h2>
+            <div id="suggestionsContainer" style="margin-top:15px; max-height:300px; overflow-y:auto;"></div>
+        </div>
+    </div>
+
+    <div id="devSupremoModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal('devSupremoModal')">&times;</span>
+            <h2>👑 Painel Dev Supremo</h2>
+            <p style="margin-bottom: 15px;">Controlo total do ecossistema do site.</p>
+            <div style="background: #f1f5f9; padding: 10px; border-radius: 5px; margin-bottom: 10px;">
+                <strong>Métricas em Tempo Real:</strong>
+                <p id="devUserCount">Usuários Cadastrados no Dispositivo: 1</p>
+            </div>
+            <button onclick="alert('Simulação: Conta de teste banida e removida do LocalStorage.')" class="btn-logout" style="width:100%; margin:0; padding:10px;">Banir Conta de Teste</button>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
