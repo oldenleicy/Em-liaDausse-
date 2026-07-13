@@ -2,148 +2,287 @@
 <html lang="pt-PT">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Emília Daússe Connect</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ESED Connect - Plataforma Escolar Inteligente</title>
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 
-    /*******************************************************************************
-     * NAVEGAÇÃO SUPERIOR (BARRA PRINCIPAL & HAMBÚRGUER)
-     *******************************************************************************/
-    <nav class="navbar">
-        <button class="hamburger-btn" onclick="toggleMenu()">☰</button>
-        <div class="nav-logo">🏫 ED Connect</div>
-        <div class="nav-user" id="navUserArea">
-            <button onclick="showModal('authModal')" class="btn-primary">Entrar</button>
+    <section id="welcomeScreen" class="welcome-screen">
+        <button class="info-btn" onclick="showModal('infoModal')" title="Sobre o ESED Connect">
+            <i class="fas fa-question"></i>
+        </button>
+        
+        <div class="welcome-content">
+            <div class="welcome-logo">🏫 ESED Connect</div>
+            <h1>A tua escola num único lugar.</h1>
+            <p>Gere o teu desempenho escolar, participa na comunidade e acede a recursos pedagógicos inovadores com consumo mínimo de dados.</p>
+            <button class="btn-start" onclick="enterApp()">
+                Começar <i class="fas fa-arrow-right"></i>
+            </button>
         </div>
-    </nav>
+        <div class="welcome-footer">Edição 2026 • Prémio Jovem Criativo</div>
+    </section>
 
-    <div id="sidebarMenu" class="sidebar">
-        <button class="close-sidebar" onclick="toggleMenu()">×</button>
-        <div class="sidebar-header">
-            <h3 id="sidebarUserName">Menu Escolar</h3>
+    <div id="appInterface" class="app-interface" style="display: none;">
+        
+        <nav class="navbar">
+            <button class="hamburger-btn" onclick="toggleMenu()">
+                <i class="fas fa-bars"></i>
+            </button>
+            <div class="nav-logo">🏫 ESED Connect</div>
+            <div class="nav-user" id="navUserArea">
+                <button onclick="showModal('authModal')" class="btn-primary-nav">
+                    <i class="fas fa-sign-in-alt"></i> Entrar
+                </button>
+            </div>
+        </nav>
+
+        <div id="sidebarMenu" class="sidebar">
+            <button class="close-sidebar" onclick="toggleMenu()">&times;</button>
+            <div class="sidebar-header">
+                <h3 id="sidebarUserName">Menu Escolar</h3>
+                <span class="user-role-badge" id="userRoleBadge">Visitante</span>
+            </div>
+            <ul class="sidebar-links">
+                <li><a href="#" onclick="switchTab('inicio')"><i class="fas fa-home"></i> Início</a></li>
+                <li><a href="#" onclick="switchTab('desempenho')"><i class="fas fa-chart-line"></i> Meu Desempenho</a></li>
+                <li><a href="#" onclick="switchTab('comunidades')"><i class="fas fa-users"></i> Comunidades e Jogos</a></li>
+                <li><a href="#" onclick="showModal('libraryModal')"><i class="fas fa-book"></i> Biblioteca Virtual</a></li>
+                <li><a href="#" onclick="switchTab('horarios')"><i class="fas fa-calendar-alt"></i> Horário das Turmas</a></li>
+                <li><a href="#" onclick="showModal('suggestModal')"><i class="fas fa-comment-alt"></i> Ouvidoria e Sugestões</a></li>
+                <li><a href="#" onclick="showModal('settingsModal')"><i class="fas fa-cog"></i> Definições da Conta</a></li>
+                
+                <li id="menu-chef-comunidades" style="display:none;"><a href="#" onclick="customAlert('Info', 'Painel de Gestão de Comunidades ativo.')"><i class="fas fa-shield-alt"></i> Gerir Comunidades</a></li>
+                <li id="menu-dev-sugestoes" style="display:none;"><a href="#" onclick="showModal('viewSuggestionsModal')"><i class="fas fa-envelope-open-text"></i> Ver Sugestões (Dev)</a></li>
+                <li id="menu-dev-supremo" style="display:none;"><a href="#" onclick="showModal('devSupremoModal')"><i class="fas fa-crown"></i> Painel Dev Supremo</a></li>
+            </ul>
         </div>
-        <ul class="sidebar-links">
-            <li><a href="#" onclick="showModal('libraryModal'); toggleMenu();">📚 Biblioteca Virtual</a></li>
-            <li><a href="#" onclick="showModal('suggestModal'); toggleMenu();">✍️ Enviar Sugestão</a></li>
-            <li><a href="#" onclick="showModal('settingsModal'); toggleMenu();">⚙️ Definições da Conta</a></li>
+
+        <main class="container">
             
-            <li id="menu-chef-comunidades" style="display:none;"><a href="#" onclick="showModal('communitiesModal'); toggleMenu();">🛡️ Gerir Comunidades</a></li>
-            <li id="menu-dev-sugestoes" style="display:none;"><a href="#" onclick="showModal('viewSuggestionsModal'); toggleMenu();">📩 Ver Sugestões (Dev)</a></li>
-            <li id="menu-dev-supremo" style="display:none;"><a href="#" onclick="showModal('devSupremoModal'); toggleMenu();">👑 Painel Dev Supremo</a></li>
-        </ul>
+            <section id="tab-inicio" class="tab-content active">
+                <div id="offlineNotice" class="offline-notice" style="display: none;">
+                    <i class="fas fa-wifi-slash"></i> Modo Offline Ativo. Exibindo dados locais guardados.
+                </div>
+
+                <div class="vote-section">
+                    <h2><i class="fas fa-vote-yea"></i> O que devemos construir a seguir?</h2>
+                    <div class="vote-box">
+                        <div class="vote-option" onclick="registerVote('agenda')">
+                            <span>📅 1. Agenda Escolar Dinâmica</span>
+                            <span id="votos-agenda" class="vote-count">0 votos</span>
+                        </div>
+                        <div class="vote-option" onclick="registerVote('quiz')">
+                            <span>📝 2. Quiz de Preparação para Exames</span>
+                            <span id="votos-quiz" class="vote-count">0 votos</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="news-section">
+                    <h2><i class="fas fa-bullhorn"></i> Novidades e Avisos da Escola</h2>
+                    <div class="news-grid" id="newsGrid"></div>
+                </div>
+
+                <div class="features-grid">
+                    <div class="card dev-card">
+                        <div class="ribbon">Brevemente</div>
+                        <h3><i class="fas fa-sign-language"></i> Tradutor de Libras por Câmera</h3>
+                        <p>Inclusão social por Inteligência Artificial que traduz Língua de Sinais pela câmara do telemóvel.</p>
+                        <button class="btn-disabled" disabled><i class="fas fa-lock"></i> Módulo em Desenvolvimento</button>
+                    </div>
+                </div>
+            </section>
+
+            <section id="tab-desempenho" class="tab-content">
+                <h2><i class="fas fa-chart-area"></i> Monitoria de Desempenho</h2>
+                <p class="tab-subtitle">Acompanha a tua evolução escolar e o teu progresso na plataforma.</p>
+                
+                <div class="chart-container">
+                    <h3><i class="fas fa-graduation-cap"></i> Rendimento Académico (Evolução de Notas)</h3>
+                    <canvas id="academicChart"></canvas>
+                </div>
+
+                <div class="chart-container">
+                    <h3><i class="fas fa-gamepad"></i> Engajamento no App (Gamificação)</h3>
+                    <canvas id="appPerformanceChart"></canvas>
+                </div>
+            </section>
+
+            <section id="tab-comunidades" class="tab-content">
+                <h2><i class="fas fa-gamepad"></i> Comunidades de Estudo & Quizes</h2>
+                
+                <div class="leaderboard-box">
+                    <h3><i class="fas fa-trophy"></i> Ranking Semanal de Alunos</h3>
+                    <ol class="ranking-list">
+                        <li><span>🥇 Olden Leicy (12ª Turma A)</span> <strong>2,450 pts</strong></li>
+                        <li><span>🥈 Amélia Bernardo (11ª Turma B)</span> <strong>1,980 pts</strong></li>
+                        <li><span>🥉 Carlos Moises (12ª Turma C)</span> <strong>1,750 pts</strong></li>
+                    </ol>
+                </div>
+
+                <div class="games-grid">
+                    <div class="game-card" onclick="customAlert('Quiz', 'Carregando o simulador de exames nacionais...')">
+                        <div class="game-icon"><i class="fas fa-brain"></i></div>
+                        <h4>Quiz Flashcards</h4>
+                        <p>Treina fórmulas de Química, Física e Filosofia antes do teste.</p>
+                    </div>
+                    <div class="game-card" onclick="customAlert('Comunidade', 'Acedendo ao Fórum Geral de Matemática.')">
+                        <div class="game-icon"><i class="fas fa-comments"></i></div>
+                        <h4>Sala de Matemática</h4>
+                        <p>Partilha resumos e tira dúvidas com alunos de outras turmas.</p>
+                    </div>
+                </div>
+            </section>
+
+            <section id="tab-horarios" class="tab-content">
+                <h2><i class="fas fa-clock"></i> Cronograma de Aulas</h2>
+                <div class="schedule-selector">
+                    <label for="selectTurma">Seleciona a tua Turma:</label>
+                    <select id="selectTurma" onchange="updateScheduleTable()">
+                        <option value="12a">12ª Classe - Turma 01</option>
+                        <option value="11a">11ª Classe - Turma 03</option>
+                    </select>
+                </div>
+                <div class="table-responsive">
+                    <table class="schedule-table">
+                        <thead>
+                            <tr>
+                                <th>Horário</th>
+                                <th>Segunda</th>
+                                <th>Terça</th>
+                                <th>Quarta</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>07:00 - 07:50</td>
+                                <td>Matemática</td>
+                                <td>Português</td>
+                                <td>Física</td>
+                            </tr>
+                            <tr>
+                                <td>07:55 - 08:45</td>
+                                <td>Matemática</td>
+                                <td>Química</td>
+                                <td>Filosofia</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+        </main>
     </div>
 
-    /*******************************************************************************
-     * CONTEÚDO PRINCIPAL DA TELA INICIAL (VISÍVEL PARA TODOS)
-     *******************************************************************************/
-    <main class="container">
-        
-        <section class="vote-section">
-            <h2>🗳️ O que devemos construir a seguir?</h2>
-            <div class="vote-box">
-                <div class="vote-option" onclick="registerVote('agenda')">
-                    <span>📅 1. Agenda Escolar Dinâmica</span>
-                    <span id="votos-agenda">0 votos</span>
-                </div>
-                <div class="vote-option" onclick="registerVote('quiz')">
-                    <span>📝 2. Quiz de Preparação para Exames</span>
-                    <span id="votos-quiz">0 votos</span>
-                </div>
-            </div>
-        </section>
+    <div id="infoModal" class="modal">
+        <div class="modal-content info-content">
+            <span class="close" onclick="closeModal('infoModal')">&times;</span>
+            <h2><i class="fas fa-info-circle"></i> Sobre o ESED Connect</h2>
+            <p>O <strong>ESED Connect</strong> é um ecossistema escolar inteligente projetado para unificar a gestão escolar e pedagógica da Escola Secundária Emília Daússe.</p>
+            <p>Desenvolvido focado na acessibilidade, inclusão e facilidade de acesso à informação, o projeto concorre ao <strong>Prémio Jovem Criativo</strong> visando acelerar a inclusão digital educacional em Moçambique.</p>
+            <button onclick="closeModal('infoModal')" class="btn-primary full-width">Entendido</button>
+        </div>
+    </div>
 
-        <section class="news-section">
-            <h2>📢 Novidades e Avisos da Escola</h2>
-            <div class="news-grid" id="newsGrid"></div>
-        </section>
-
-        <section class="features-grid">
-            <div class="card dev-card">
-                <div class="ribbon">Em Desenvolvimento</div>
-                <h3>🤟 Tradutor de Libras por Câmera</h3>
-                <p>Inclusão através de IA que traduz Língua de Sinais pela câmara do telemóvel.</p>
-                <button class="btn-disabled" disabled>Bloqueado</button>
-            </div>
-        </section>
-    </main>
-
-    /*******************************************************************************
-     * JANELAS MODAIS (INTERFACES OCULTAS QUE ABREM VIA DIÁLOGO)
-     *******************************************************************************/
-    
     <div id="authModal" class="modal">
-        <div class="modal-content">
+        <div class="modal-content dynamic-auth">
             <span class="close" onclick="closeModal('authModal')">&times;</span>
-            <h2>Registo de Usuário</h2>
+            <h2><i class="fas fa-user-plus"></i> Registo de Utilizador</h2>
+            <p class="auth-desc">Cria o teu Perfil Digital para desbloquear os recursos do app.</p>
             <form id="authForm" onsubmit="handleAuth(event)">
-                <input type="text" id="authNomeCompleto" placeholder="Nome Completo" required>
-                <input type="email" id="authEmail" placeholder="E-mail de Verificação" required>
-                <input type="password" id="authPassword" placeholder="Defina a sua Password" required>
+                <div class="input-group">
+                    <i class="fas fa-user"></i>
+                    <input type="text" id="authNomeCompleto" placeholder="Nome Completo" required>
+                </div>
+                <div class="input-group">
+                    <i class="fas fa-envelope"></i>
+                    <input type="email" id="authEmail" placeholder="E-mail de Verificação" required>
+                </div>
+                <div class="input-group">
+                    <i class="fas fa-lock"></i>
+                    <input type="password" id="authPassword" placeholder="Defina a sua Password" required>
+                </div>
                 
                 <div class="form-row">
                     <input type="text" id="authClasse" placeholder="Classe (Ex: 12º)" required>
                     <input type="text" id="authTurma" placeholder="Turma (Ex: 03)" required>
                     <input type="text" id="authSala" placeholder="Sala (Ex: 4)" required>
                 </div>
-                <input type="number" id="authIdade" placeholder="Idade" required>
-                <input type="password" id="authChave" placeholder="Chave de Acesso (Opcional)">
-                <button type="submit" class="btn-primary full-width">Criar Conta e Entrar</button>
+                <div class="input-group">
+                    <i class="fas fa-calendar-day"></i>
+                    <input type="number" id="authIdade" placeholder="Idade" required>
+                </div>
+                <div class="input-group">
+                    <i class="fas fa-key"></i>
+                    <input type="password" id="authChave" placeholder="Chave de Acesso Administrativo (Opcional)">
+                </div>
+                <button type="submit" class="btn-primary full-width"><i class="fas fa-check-circle"></i> Criar Perfil Digital</button>
             </form>
-        </div>
-    </div>
-
-    <div id="settingsModal" class="modal">
-        <div class="modal-content">
-            <span class="close" onclick="closeModal('settingsModal')">&times;</span>
-            <h2>⚙️ Definições da Conta</h2>
-            <p>Se recebeu uma chave de acesso da direção ou do programador, insira-a abaixo para ativar novas funções:</p>
-            <div style="margin-top: 15px;">
-                <input type="password" id="upgradeChaveInput" placeholder="Introduzir nova Chave de Acesso">
-                <button onclick="applyKeyUpgrade()" class="btn-primary full-width">Atualizar Cargo</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="libraryModal" class="modal">
-        <div class="modal-content">
-            <span class="close" onclick="closeModal('libraryModal')">&times;</span>
-            <h2>📚 Biblioteca Virtual</h2>
-            <ul id="bookList" style="margin-top: 15px; padding-left: 20px;">
-                <li><strong>Filosofia:</strong> A Retórica - Aristóteles</li>
-                <li><strong>Matemática:</strong> Geometria Espacial 12ª Classe</li>
-            </ul>
         </div>
     </div>
 
     <div id="suggestModal" class="modal">
         <div class="modal-content">
             <span class="close" onclick="closeModal('suggestModal')">&times;</span>
-            <h2>✍️ Enviar Sugestão ao Dev</h2>
-            <textarea id="suggestionText" placeholder="Escreva a sua mensagem para o desenvolvedor..." style="width:100%; height:100px; margin:10px 0; padding:8px;"></textarea>
+            <h2><i class="fas fa-bullhorn"></i> Ouvidoria e Sugestões</h2>
+            <p>Envia ideias, críticas ou alertas de forma segura para a gestão e engenharia da plataforma.</p>
+            <textarea id="suggestionText" placeholder="Escreva a sua mensagem aqui..." required></textarea>
             <button onclick="submitSuggestion()" class="btn-primary full-width">Enviar Mensagem</button>
         </div>
     </div>
 
+    <div id="settingsModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal('settingsModal')">&times;</span>
+            <h2><i class="fas fa-sliders-h"></i> Definições do Perfil</h2>
+            <p>Introduza uma chave de ativação oficial fornecida pela secretaria para alterar a sua hierarquia de conta.</p>
+            <input type="password" id="upgradeChaveInput" placeholder="Introduzir Chave de Acesso">
+            <button onclick="applyKeyUpgrade()" class="btn-primary full-width">Atualizar Credenciais</button>
+        </div>
+    </div>
+
+    <div id="libraryModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal('libraryModal')">&times;</span>
+            <h2><i class="fas fa-book-open"></i> Biblioteca Virtual Otimizada</h2>
+            <ul id="bookList" class="styled-list">
+                <li><i class="fas fa-file-pdf"></i> <strong>Filosofia:</strong> A Retórica - Aristóteles (1.2 MB)</li>
+                <li><i class="fas fa-file-pdf"></i> <strong>Matemática:</strong> Geometria Espacial 12ª (3.5 MB)</li>
+            </ul>
+        </div>
+    </div>
+
     <div id="viewSuggestionsModal" class="modal">
-        <div class="modal-content" style="max-width: 600px;">
+        <div class="modal-content">
             <span class="close" onclick="closeModal('viewSuggestionsModal')">&times;</span>
-            <h2>📩 Caixa de Sugestões Recebidas</h2>
-            <div id="suggestionsContainer" style="margin-top:15px; max-height:300px; overflow-y:auto;"></div>
+            <h2><i class="fas fa-inbox"></i> Caixa de Entrada de Sugestões</h2>
+            <div id="suggestionsContainer"></div>
         </div>
     </div>
 
     <div id="devSupremoModal" class="modal">
         <div class="modal-content">
             <span class="close" onclick="closeModal('devSupremoModal')">&times;</span>
-            <h2>👑 Painel Dev Supremo</h2>
-            <p style="margin-bottom: 15px;">Controlo total do ecossistema do site.</p>
-            <div style="background: #f1f5f9; padding: 10px; border-radius: 5px; margin-bottom: 10px;">
-                <strong>Métricas em Tempo Real:</strong>
-                <p id="devUserCount">Usuários Cadastrados no Dispositivo: 1</p>
+            <h2><i class="fas fa-crown"></i> Painel Dev Supremo</h2>
+            <div class="metrics-panel">
+                <p id="devUserCount"><i class="fas fa-server"></i> Analisando tráfego do servidor...</p>
+                <p><i class="fas fa-shield-alt"></i> Estado do Sistema: <span class="badge-success">Operacional</span></p>
             </div>
-            <button onclick="alert('Simulação: Conta de teste banida e removida do LocalStorage.')" class="btn-logout" style="width:100%; margin:0; padding:10px;">Banir Conta de Teste</button>
+            <button onclick="toggleMaintenanceMode()" class="btn-logout full-width"><i class="fas fa-power-off"></i> Alternar Modo Manutenção</button>
+        </div>
+    </div>
+
+    <div id="customAlertModal" class="modal">
+        <div class="modal-content alert-modal-box">
+            <div class="alert-icon-container"><i id="customAlertIcon" class="fas fa-info-circle"></i></div>
+            <h3 id="customAlertTitle">Aviso</h3>
+            <p id="customAlertMessage">Mensagem de aviso do sistema.</p>
+            <button onclick="closeModal('customAlertModal')" class="btn-primary">Confirmar</button>
         </div>
     </div>
 
