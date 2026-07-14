@@ -1,33 +1,21 @@
 /*******************************************************************************
- * 1. CONFIGURAÇÃO DO SUPABASE (BANCO DE DADOS NA NUVEM)
+ * 1. CONFIGURAÇÕES E ESTADO GLOBAL (100% LOCAL)
  *******************************************************************************/
-const SUPABASE_URL = "https://SEU_PROJETO.supabase.co"; 
-const SUPABASE_KEY = "SUA_CHAVE_ANON_DO_SUPABASE";
+// Simulador de Banco de Dados Local usando o armazenamento do navegador (localStorage)
+if (!localStorage.getItem("votos_agenda")) localStorage.setItem("votos_agenda", "14");
+if (!localStorage.getItem("votos_quiz")) localStorage.setItem("votos_quiz", "32");
+if (!localStorage.getItem("sugestoes_locais")) localStorage.setItem("sugestoes_locais", JSON.stringify([]));
 
-// Mudamos o nome para 'supabaseClient' para evitar conflito com a biblioteca do HTML
-let supabaseClient = null;
-
-try {
-    // Verifica se a biblioteca foi carregada no HTML e se as chaves foram preenchidas
-    if (SUPABASE_URL && !SUPABASE_URL.includes("SEU_PROJETO") && typeof supabase !== 'undefined') {
-        // Inicializa usando a biblioteca global (supabase) mas guarda em 'supabaseClient'
-        supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-    }
-} catch (e) {
-    console.warn("Falha ao inicializar o Supabase. Rodando em modo de simulação local.", e);
-}
-
-// Estado Global do Aplicativo
 let currentUser = JSON.parse(localStorage.getItem("esed_user")) || null;
 let currentTab = 'inicio';
 let academicChartInstance = null;
 let appChartInstance = null;
 
 // Inicialização Automática ao Carregar o Site
-window.onload = async function() {
+window.onload = function() {
     checkConnectionStatus();
     renderNews();
-    await fetchVotesStatus();
+    fetchVotesStatus();
     updateUserUI();
     
     // Monitorar conexão de internet em tempo real (Modo Offline)
@@ -42,21 +30,31 @@ function enterApp() {
     const welcome = document.getElementById("welcomeScreen");
     const appInterface = document.getElementById("appInterface");
     
-    welcome.style.opacity = "0";
-    setTimeout(() => {
-        welcome.style.display = "none";
-        appInterface.style.display = "block";
-        // Inicializa os gráficos ocultos na memória
-        initCharts();
-    }, 300);
+    if (welcome && appInterface) {
+        welcome.style.opacity = "0";
+        setTimeout(() => {
+            welcome.style.display = "none";
+            appInterface.style.display = "block";
+            // Inicializa os gráficos
+            initCharts();
+        }, 300);
+    }
 }
 
 function toggleMenu() {
-    document.getElementById("sidebarMenu").classList.toggle("active");
+    const menu = document.getElementById("sidebarMenu");
+    if (menu) menu.classList.toggle("active");
 }
 
-function showModal(id) { document.getElementById(id).style.display = 'flex'; }
-function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+function showModal(id) { 
+    const modal = document.getElementById(id);
+    if (modal) modal.style.display = 'flex'; 
+}
+
+function closeModal(id) { 
+    const modal = document.getElementById(id);
+    if (modal) modal.style.display = 'none'; 
+}
 
 // Sistema de Troca de Abas (Tabs) Sem Recarregar a Página
 function switchTab(tabId) {
@@ -72,7 +70,8 @@ function switchTab(tabId) {
     if (targetTab) targetTab.classList.add('active');
     
     // Fecha o menu lateral caso esteja no telemóvel
-    document.getElementById("sidebarMenu").classList.remove("active");
+    const menu = document.getElementById("sidebarMenu");
+    if (menu) menu.classList.remove("active");
     
     // Atualiza os gráficos se entrar na aba de desempenho
     if (tabId === 'desempenho') {
@@ -81,25 +80,30 @@ function switchTab(tabId) {
 }
 
 /*******************************************************************************
- * 3. CONTROLADOR DE ALERTAS E DESIGN EM TELA CHEIA
+ * 3. CONTROLADOR DE ALERTAS PERSONALIZADO
  *******************************************************************************/
 function customAlert(titulo, mensagem, tipo = 'info') {
-    document.getElementById("customAlertTitle").innerText = titulo;
-    document.getElementById("customAlertMessage").innerText = message = mensagem;
-    
+    const alertTitle = document.getElementById("customAlertTitle");
+    const alertMessage = document.getElementById("customAlertMessage");
     const icon = document.getElementById("customAlertIcon");
-    if (tipo === 'erro') {
-        icon.className = "fas fa-exclamation-triangle";
-        icon.style.color = "#ef4444";
-    } else {
-        icon.className = "fas fa-info-circle";
-        icon.style.color = "#3b82f6";
+    
+    if (alertTitle && alertMessage && icon) {
+        alertTitle.innerText = titulo;
+        alertMessage.innerText = mensagem;
+        
+        if (tipo === 'erro') {
+            icon.className = "fas fa-exclamation-triangle";
+            icon.style.color = "#ef4444";
+        } else {
+            icon.className = "fas fa-info-circle";
+            icon.style.color = "#3b82f6";
+        }
+        showModal("customAlertModal");
     }
-    showModal("customAlertModal");
 }
 
 /*******************************************************************************
- * 4. SEGURANÇA, AUTENTICAÇÃO E REGRAS DE ACESSO (RBAC)
+ * 4. AUTENTICAÇÃO E REGRAS DE ACESSO (RBAC)
  *******************************************************************************/
 function handleAuth(event) {
     event.preventDefault();
@@ -108,9 +112,9 @@ function handleAuth(event) {
     const chave = document.getElementById("authChave").value.trim();
     const primeiroNome = nomeCompleto.split(' ')[0];
 
-    // Segurança: Camuflagem simples de strings para evitar inspeção óbvia
+    // Segurança camuflada
     let role = "aluno";
-    if (btoa(chave) === "REVfTUFYXzIwMjY=" && email === "oldenleicy@gmail.com") { // DEV_MAX_2026 em Base64
+    if (btoa(chave) === "REVfTUFYXzIwMjY=" && email === "oldenleicy@gmail.com") { // DEV_MAX_2026
         role = "dev_maximo";
     } else if (chave === "DIRECAO_ESED_2026") {
         role = "direcao";
@@ -141,23 +145,27 @@ function updateUserUI() {
     const badge = document.getElementById("userRoleBadge");
     
     if (currentUser) {
-        area.innerHTML = `<span class="user-badge" style="color: white; font-size: 0.85rem; margin-right: 10px;">👤 ${currentUser.usuario}</span> <button onclick="logout()" class="btn-primary-nav" style="background:#ef4444;">Sair</button>`;
-        labelMenu.innerText = `Olá, ${currentUser.usuario}!`;
-        badge.innerText = currentUser.role.toUpperCase();
+        if (area) area.innerHTML = `<span class="user-badge" style="color: white; font-size: 0.85rem; margin-right: 10px;">👤 ${currentUser.usuario}</span> <button onclick="logout()" class="btn-primary-nav" style="background:#ef4444;">Sair</button>`;
+        if (labelMenu) labelMenu.innerText = `Olá, ${currentUser.usuario}!`;
+        if (badge) badge.innerText = currentUser.role.toUpperCase();
 
-        // Hierarquia de Abas Administrativas
+        // Mostrar abas administrativas se aplicável
         const r = currentUser.role;
-        if (r === "adm_student" || r === "dev_maximo") {
-            document.getElementById("menu-chef-comunidades").style.display = "block";
+        const menuChef = document.getElementById("menu-chef-comunidades");
+        const menuSugestoes = document.getElementById("menu-dev-sugestoes");
+        const menuDev = document.getElementById("menu-dev-supremo");
+        
+        if (menuChef && (r === "adm_student" || r === "dev_maximo")) {
+            menuChef.style.display = "block";
         }
         if (r === "dev_maximo") {
-            document.getElementById("menu-dev-sugestoes").style.display = "block";
-            document.getElementById("menu-dev-supremo").style.display = "block";
+            if (menuSugestoes) menuSugestoes.style.display = "block";
+            if (menuDev) menuDev.style.display = "block";
             fetchSuggestionsCloud();
             updateDevMetrics();
         }
     } else {
-        badge.innerText = "Visitante";
+        if (badge) badge.innerText = "Visitante";
     }
 }
 
@@ -167,104 +175,101 @@ function logout() {
 }
 
 /*******************************************************************************
- * 5. CONEXÃO COM A NUVEM (VOTOS & SUGESTÕES REAL-TIME)
+ * 5. CONEXÃO LOCAL SIMULADA (VOTOS E SUGESTÕES)
  *******************************************************************************/
-async function fetchVotesStatus() {
-    try {
-        if (!supabaseClient) throw new Error("Sem conexão");
-        const { data, error } = await supabaseClient.from('votacoes').select('*');
-        if (error) throw error;
-        
-        data.forEach(voto => {
-            if (voto.opcao === 'agenda') document.getElementById("votos-agenda").innerText = `${voto.quantidade} votos`;
-            if (voto.opcao === 'quiz') document.getElementById("votos-quiz").innerText = `${voto.quantidade} votos`;
-        });
-    } catch (err) {
-        // Fallback local se o Supabase não estiver configurado
-        document.getElementById("votos-agenda").innerText = "14 votos";
-        document.getElementById("votos-quiz").innerText = "32 votos";
-    }
+function fetchVotesStatus() {
+    const vAgenda = localStorage.getItem("votos_agenda");
+    const vQuiz = localStorage.getItem("votos_quiz");
+    
+    const labelAgenda = document.getElementById("votos-agenda");
+    const labelQuiz = document.getElementById("votos-quiz");
+    
+    if (labelAgenda) labelAgenda.innerText = `${vAgenda} votos`;
+    if (labelQuiz) labelQuiz.innerText = `${vQuiz} votos`;
 }
 
-async function registerVote(option) {
-    if(!currentUser) {
+function registerVote(option) {
+    if (!currentUser) {
         customAlert("Autenticação Necessária", "Precisas de criar uma conta para votar nas decisões da escola.", "erro");
         return;
     }
-    try {
-        if (!supabaseClient) throw new Error("Sem conexão");
-        const { error } = await supabaseClient.rpc('incrementar_voto', { row_opcao: option });
-        if (error) throw error;
-        customAlert("Voto Computado", "Obrigado por participares na evolução da ESED!");
-        await fetchVotesStatus();
-    } catch (err) {
-        customAlert("Votação Simulação", "Voto computado localmente no protótipo de testes!");
+    
+    if (option === 'agenda') {
+        let atual = parseInt(localStorage.getItem("votos_agenda")) || 0;
+        localStorage.setItem("votos_agenda", (atual + 1).toString());
+    } else if (option === 'quiz') {
+        let atual = parseInt(localStorage.getItem("votos_quiz")) || 0;
+        localStorage.setItem("votos_quiz", (atual + 1).toString());
     }
+    
+    customAlert("Voto Computado", "Obrigado por participares! Voto guardado localmente nesta demonstração.");
+    fetchVotesStatus();
 }
 
-async function submitSuggestion() {
-    const txt = document.getElementById("suggestionText").value;
-    if(!txt) return;
+function submitSuggestion() {
+    const txtArea = document.getElementById("suggestionText");
+    if (!txtArea || !txtArea.value) return;
 
+    const txt = txtArea.value;
     const autorMsg = currentUser ? `${currentUser.nomeCompleto} (${currentUser.classe}-${currentUser.turma})` : "Anónimo";
     
-    try {
-        if (!supabaseClient) throw new Error("Sem conexão");
-        const { error } = await supabaseClient.from('sugestoes').insert([{ texto: txt, autor: autorMsg }]);
-        if (error) throw error;
-        
-        customAlert("Mensagem Enviada", "A tua sugestão foi guardada de forma segura na nuvem.");
-        document.getElementById("suggestionText").value = "";
-        closeModal("suggestModal");
-    } catch (err) {
-        customAlert("Sucesso", "Sugestão salva localmente no ambiente de testes!");
-        document.getElementById("suggestionText").value = "";
-        closeModal("suggestModal");
-    }
+    let sugestoes = JSON.parse(localStorage.getItem("sugestoes_locais")) || [];
+    sugestoes.push({ texto: txt, autor: autorMsg });
+    localStorage.setItem("sugestoes_locais", JSON.stringify(sugestoes));
+    
+    customAlert("Sucesso", "A tua sugestão foi guardada localmente neste dispositivo.");
+    txtArea.value = "";
+    closeModal("suggestModal");
 }
 
-async function fetchSuggestionsCloud() {
+function fetchSuggestionsCloud() {
     const container = document.getElementById("suggestionsContainer");
     if (!container) return;
-    try {
-        if (!supabaseClient) throw new Error("Sem conexão");
-        const { data, error } = await supabaseClient.from('sugestoes').select('*').order('id', { ascending: false });
-        if (error) throw error;
-        container.innerHTML = data.map(s => `<div class="suggestion-item"><p>"${s.texto}"</p><small>De: ${s.autor}</small></div>`).join('');
-    } catch (e) {
-        container.innerHTML = "<p style='color:var(--text-muted);'>Nenhuma mensagem nova no servidor local.</p>";
+    
+    let sugestoes = JSON.parse(localStorage.getItem("sugestoes_locais")) || [];
+    if (sugestoes.length === 0) {
+        container.innerHTML = "<p style='color:var(--text-muted);'>Nenhuma sugestão enviada localmente ainda.</p>";
+    } else {
+        container.innerHTML = sugestoes.map(s => `
+            <div class="suggestion-item" style="border-bottom: 1px solid #e2e8f0; padding: 10px 0;">
+                <p style="font-style: italic;">"${s.texto}"</p>
+                <small style="color:var(--text-muted);">Autor: ${s.autor}</small>
+            </div>
+        `).join('');
     }
 }
 
 /*******************************************************************************
- * 6. GRÁFICOS DINÂMICOS (CHART.JS - ESTILO BOLSA DE VALORES)
+ * 6. GRÁFICOS DINÂMICOS (CHART.JS)
  *******************************************************************************/
 function initCharts() {
-    // Destruir instâncias antigas para não duplicar memória ao trocar de aba
+    const chartAc = document.getElementById('academicChart');
+    const chartApp = document.getElementById('appPerformanceChart');
+    
+    if (!chartAc || !chartApp) return;
+
     if (academicChartInstance) academicChartInstance.destroy();
     if (appChartInstance) appChartInstance.destroy();
 
-    // Gráfico 1: Rendimento de Notas (Linha Contínua da Bolsa de Valores)
-    const ctxAcademic = document.getElementById('academicChart').getContext('2d');
+    const ctxAcademic = chartAc.getContext('2d');
     academicChartInstance = new Chart(ctxAcademic, {
         type: 'line',
         data: {
             labels: ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul'],
             datasets: [{
                 label: 'Média de Notas (0-20)',
-                data: [12, 14, 11, 15, 16, 14, 18], // Dados simulados de evolução
+                data: [12, 14, 11, 15, 16, 14, 18],
                 borderColor: '#2563eb',
                 backgroundColor: 'rgba(37, 99, 235, 0.1)',
                 fill: true,
-                tension: 0.4, // Curva suave na linha
+                tension: 0.4,
                 borderWidth: 3
             }]
         },
         options: { responsive: true, scales: { y: { min: 0, max: 20 } } }
     });
 
-    // Gráfico 2: Desempenho no App (Área Somada / Barras)
-    const ctxApp = document.getElementById('appPerformanceChart').getContext('2d');
+    const ctxApp = chartApp.getContext('2d');
     appChartInstance = new Chart(ctxApp, {
         type: 'bar',
         data: {
@@ -289,25 +294,30 @@ function checkConnectionStatus() {
 
 function toggleOnlineStatus() {
     const notice = document.getElementById("offlineNotice");
-    if (navigator.onLine) {
-        if(notice) notice.style.display = "none";
-    } else {
-        if(notice) notice.style.display = "flex";
+    if (notice) {
+        if (navigator.onLine) {
+            notice.style.display = "none";
+        } else {
+            notice.style.display = "flex";
+        }
     }
 }
 
 function renderNews() {
     const grid = document.getElementById("newsGrid");
+    if (!grid) return;
+    
     const dadosNoticias = [
         { id: 1, titulo: "Exames de Recorrência - ESED 2026", resumo: "O calendário completo das avaliações de recurso já se encontra disponível no placard principal da escola.", data: "13/07/2026", imagem: "https://images.unsplash.com/photo-1506784983877-45594efa4cbe?w=400" }
     ];
+    
     grid.innerHTML = dadosNoticias.map(item => `
-        <div class="news-card" onclick="customAlert('${item.titulo}', '${item.resumo}')">
-            <img src="${item.imagem}">
-            <div class="news-body">
-                <span class="news-date">📅 ${item.data}</span>
-                <h4>${item.titulo}</h4>
-                <p>${item.resumo.substring(0, 65)}...</p>
+        <div class="news-card" onclick="customAlert('${item.titulo}', '${item.resumo}')" style="cursor:pointer;">
+            <img src="${item.imagem}" style="width:100%; height:160px; object-fit:cover;">
+            <div class="news-body" style="padding:16px;">
+                <span class="news-date" style="font-size:0.75rem; color:var(--text-muted);">📅 ${item.data}</span>
+                <h4 style="margin: 6px 0; color:var(--blue-primary);">${item.titulo}</h4>
+                <p style="font-size:0.9rem;">${item.resumo.substring(0, 65)}...</p>
             </div>
         </div>
     `).join('');
@@ -318,13 +328,12 @@ function updateScheduleTable() {
 }
 
 function toggleMaintenanceMode() {
-    customAlert("Painel de Controle", "Modo Manutenção ativado. O site exibirá um aviso de bloqueio na próxima sessão.");
+    customAlert("Painel de Controle", "Modo Manutenção ativado temporariamente no protótipo.");
 }
 
 function updateDevMetrics() {
-    if (supabaseClient) {
-        document.getElementById("devUserCount").innerHTML = `<i class="fas fa-server"></i> Banco de dados na Nuvem: <strong style="color:#10b981;">Conectado via API</strong>`;
-    } else {
-        document.getElementById("devUserCount").innerHTML = `<i class="fas fa-server"></i> Banco de dados na Nuvem: <strong style="color:#f59e0b;">Modo de Simulação Ativo</strong>`;
+    const devUserCountLabel = document.getElementById("devUserCount");
+    if (devUserCountLabel) {
+        devUserCountLabel.innerHTML = `<i class="fas fa-server"></i> Banco de dados: <strong style="color:#f59e0b;">Demonstração Local Segura Ativa</strong>`;
     }
 }
