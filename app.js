@@ -1,41 +1,81 @@
 /*******************************************************************************
- * 1. CONFIGURAÇÕES E ESTADO GLOBAL (100% LOCAL)
+ * 1. CONFIGURAÇÕES, BANCO DE DADOS LOCAL (LOCALSTORAGE) E ESTADO GLOBAL
  *******************************************************************************/
-// Simulador de Banco de Dados Local usando o armazenamento do navegador (localStorage)
-if (!localStorage.getItem("votos_agenda")) localStorage.setItem("votos_agenda", "14");
-if (!localStorage.getItem("votos_quiz")) localStorage.setItem("votos_quiz", "32");
+// Inicialização de Dados Padrão (Fallback rico se o app for aberto pela primeira vez)
+const defaultNews = [
+    {
+        id: 1,
+        titulo: "Início das Inscrições para o Clube de Ciências ESED 2026",
+        categoria: "Eventos",
+        imagem: "https://images.unsplash.com/photo-1507679799987-c73779587ccf?w=600",
+        conteudo: "Estão abertas as inscrições para o Clube de Ciências da Escola Secundária Emília Dausse. Este ano teremos foco em projetos de robótica e programação de baixo custo. As vagas são limitadas aos alunos da 10ª, 11ª e 12ª classes. Dirige-te à sala dos professores para garantir o teu lugar.",
+        autor: "Direção ESED",
+        data: "14/07/2026",
+        expiracao: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString() // 15 dias de vida
+    },
+    {
+        id: 2,
+        titulo: "Calendário Oficial do Torneio Inter-Turmas de Futebol",
+        categoria: "Desporto",
+        imagem: "https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=600",
+        conteudo: "A nossa escola vai ferver! Na próxima segunda-feira inicia o campeonato inter-turmas de futebol. Os jogos acontecerão no campo principal durante os intervalos maiores e no período da tarde. Confere a tabela de confrontos e vem apoiar a tua turma!",
+        autor: "Educação Física",
+        data: "12/07/2026",
+        expiracao: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString()
+    }
+];
+
+const defaultBooks = [
+    { id: 1, titulo: "Manual de Matemática - 12ª Classe", autor: "Ministério da Educação", categoria: "manuais", classe: "12ª Classe", tamanho: "3.2 MB", capa: "https://images.unsplash.com/photo-1509228468518-180dd4864904?w=300", sinopse: "Manual completo de preparação com limites, derivadas, integrais e trigonometria avançada.", resumo: "Foco principal: Estudo de funções e cálculo diferencial simples." },
+    { id: 2, titulo: "Física Geral Moçambique - 11ª Classe", autor: "Plural Editores", categoria: "manuais", classe: "11ª Classe", tamanho: "4.1 MB", capa: "https://images.unsplash.com/photo-1532094349884-543bc11b234d?w=300", sinopse: "O livro abrange cinemática, dinâmica de partículas, termodinâmica e ótica geométrica.", resumo: "Foco principal: Leis de Newton e conservação de energia mecânica." },
+    { id: 3, titulo: "Exame Resolvido Português 2025", autor: "ESED Imprensa", categoria: "exames", classe: "Geral", tamanho: "1.2 MB", capa: "https://images.unsplash.com/photo-1476275466078-4007374efbbe?w=300", sinopse: "Resoluções comentadas passo a passo do exame nacional de admissão de Língua Portuguesa.", resumo: "Análise sintática e interpretação de textos literários nacionais." },
+    { id: 4, titulo: "Ualalapi", autor: "Ungulani Ba Ka Khosa", categoria: "literatura", classe: "Recomendado", tamanho: "1.8 MB", capa: "https://images.unsplash.com/photo-1544947950-fa07a98d237f?w=300", sinopse: "Clássico da literatura moçambicana focado na queda do Império de Gaza liderado por Ngungunhane.", resumo: "Análise histórica e crítica da colonização de forma poética." }
+];
+
+const defaultTraffic = [
+    { nome: "Amina José", classe: "12ª A1", nivel: "Estudante", ip: "197.243.12.85", dispositivo: "Android (Chrome)" },
+    { nome: "Carlos Manuel", classe: "11ª B1", nivel: "Estudante", ip: "197.243.14.22", dispositivo: "iPhone (Safari)" },
+    { nome: "Vicente Olden", classe: "12ª A1", nivel: "Chefe de Turma", ip: "102.85.201.3", dispositivo: "Windows (Edge)" }
+];
+
+// Inicializar armazenamento local persistente
+if (!localStorage.getItem("esed_news")) localStorage.setItem("esed_news", JSON.stringify(defaultNews));
+if (!localStorage.getItem("esed_books")) localStorage.setItem("esed_books", JSON.stringify(defaultBooks));
+if (!localStorage.getItem("esed_book_suggestions")) localStorage.setItem("esed_book_suggestions", JSON.stringify([]));
 if (!localStorage.getItem("sugestoes_locais")) localStorage.setItem("sugestoes_locais", JSON.stringify([]));
+if (!localStorage.getItem("votos_agenda")) localStorage.setItem("votos_agenda", "24");
+if (!localStorage.getItem("votos_quiz")) localStorage.setItem("votos_quiz", "42");
 
 let currentUser = JSON.parse(localStorage.getItem("esed_user")) || null;
 let currentTab = 'inicio';
 let academicChartInstance = null;
 let appChartInstance = null;
+let activeCategory = 'todos';
 
-// Inicialização Automática ao Carregar o Site
+// Inicialização de Estado ao carregar o site
 window.onload = function() {
     checkConnectionStatus();
     renderNews();
+    renderLibrary();
     fetchVotesStatus();
     updateUserUI();
+    applyStoredSettings();
     
-    // Monitorar conexão de internet em tempo real (Modo Offline)
     window.addEventListener('online', toggleOnlineStatus);
     window.addEventListener('offline', toggleOnlineStatus);
 };
 
 /*******************************************************************************
- * 2. FLUXO DE ENTRADA (TELA DE BOAS-VINDAS) & NAVEGAÇÃO
+ * 2. NAVEGAÇÃO E TRANSICÃO DE ABAS
  *******************************************************************************/
 function enterApp() {
     const welcome = document.getElementById("welcomeScreen");
     const appInterface = document.getElementById("appInterface");
-    
     if (welcome && appInterface) {
         welcome.style.opacity = "0";
         setTimeout(() => {
             welcome.style.display = "none";
             appInterface.style.display = "block";
-            // Inicializa os gráficos
             initCharts();
         }, 300);
     }
@@ -46,41 +86,36 @@ function toggleMenu() {
     if (menu) menu.classList.toggle("active");
 }
 
-function showModal(id) { 
+function showModal(id) {
     const modal = document.getElementById(id);
-    if (modal) modal.style.display = 'flex'; 
+    if (modal) modal.style.display = 'flex';
 }
 
-function closeModal(id) { 
+function closeModal(id) {
     const modal = document.getElementById(id);
-    if (modal) modal.style.display = 'none'; 
+    if (modal) modal.style.display = 'none';
 }
 
-// Sistema de Troca de Abas (Tabs) Sem Recarregar a Página
 function switchTab(tabId) {
     currentTab = tabId;
     
-    // Remove classe ativa de todas as abas
     document.querySelectorAll('.tab-content').forEach(tab => {
         tab.classList.remove('active');
     });
     
-    // Ativa a aba selecionada
     const targetTab = document.getElementById(`tab-${tabId}`);
     if (targetTab) targetTab.classList.add('active');
     
-    // Fecha o menu lateral caso esteja no telemóvel
     const menu = document.getElementById("sidebarMenu");
     if (menu) menu.classList.remove("active");
     
-    // Atualiza os gráficos se entrar na aba de desempenho
     if (tabId === 'desempenho') {
         setTimeout(() => { initCharts(); }, 150);
     }
 }
 
 /*******************************************************************************
- * 3. CONTROLADOR DE ALERTAS PERSONALIZADO
+ * 3. ALERTA CUSTOMIZADO (RELAXADO E BONITO)
  *******************************************************************************/
 function customAlert(titulo, mensagem, tipo = 'info') {
     const alertTitle = document.getElementById("customAlertTitle");
@@ -94,6 +129,9 @@ function customAlert(titulo, mensagem, tipo = 'info') {
         if (tipo === 'erro') {
             icon.className = "fas fa-exclamation-triangle";
             icon.style.color = "#ef4444";
+        } else if (tipo === 'sucesso') {
+            icon.className = "fas fa-check-circle";
+            icon.style.color = "#10b981";
         } else {
             icon.className = "fas fa-info-circle";
             icon.style.color = "#3b82f6";
@@ -103,7 +141,7 @@ function customAlert(titulo, mensagem, tipo = 'info') {
 }
 
 /*******************************************************************************
- * 4. AUTENTICAÇÃO E REGRAS DE ACESSO (RBAC)
+ * 4. AUTENTICAÇÃO E CONTROLE DE NÍVEIS DE ACESSO (RBAC)
  *******************************************************************************/
 function handleAuth(event) {
     event.preventDefault();
@@ -112,14 +150,16 @@ function handleAuth(event) {
     const chave = document.getElementById("authChave").value.trim();
     const primeiroNome = nomeCompleto.split(' ')[0];
 
-    // Segurança camuflada
+    // Controle de Chaves Especiais
     let role = "aluno";
-    if (btoa(chave) === "REVfTUFYXzIwMjY=" && email === "oldenleicy@gmail.com") { // DEV_MAX_2026
-        role = "dev_maximo";
+    if (chave === "CHEF_TURMA_2026") {
+        role = "adm_student";
     } else if (chave === "DIRECAO_ESED_2026") {
         role = "direcao";
-    } else if (chave === "CHEF_TURMA_2026") {
-        role = "adm_student";
+    } else if (chave === "DEV_MAX_2026" && email === "oldenleicy@gmail.com") {
+        role = "dev_maximo";
+    } else if (chave && chave !== "") {
+        customAlert("Chave Inválida", "A chave inserida não corresponde a nenhum perfil especial. Serás registado como Aluno.", "erro");
     }
 
     currentUser = {
@@ -136,36 +176,52 @@ function handleAuth(event) {
     localStorage.setItem("esed_user", JSON.stringify(currentUser));
     closeModal("authModal");
     updateUserUI();
-    customAlert("Bem-vindo!", `Perfil digital de ${primeiroNome} ativado com sucesso.`);
+    customAlert("Perfil Ativado!", `Boas-vindas ao ESED Connect, ${primeiroNome}!`, "sucesso");
 }
 
 function updateUserUI() {
     const area = document.getElementById("navUserArea");
     const labelMenu = document.getElementById("sidebarUserName");
     const badge = document.getElementById("userRoleBadge");
+    const uploadBtn = document.getElementById("adminUploadBookBtn");
     
-    if (currentUser) {
-        if (area) area.innerHTML = `<span class="user-badge" style="color: white; font-size: 0.85rem; margin-right: 10px;">👤 ${currentUser.usuario}</span> <button onclick="logout()" class="btn-primary-nav" style="background:#ef4444;">Sair</button>`;
-        if (labelMenu) labelMenu.innerText = `Olá, ${currentUser.usuario}!`;
-        if (badge) badge.innerText = currentUser.role.toUpperCase();
+    // Ocultar abas administrativas por padrão
+    document.getElementById("menu-chef-comunidades").style.display = "none";
+    document.getElementById("menu-dev-sugestoes").style.display = "none";
+    document.getElementById("menu-dev-supremo").style.display = "none";
+    if (uploadBtn) uploadBtn.style.display = "none";
 
-        // Mostrar abas administrativas se aplicável
-        const r = currentUser.role;
-        const menuChef = document.getElementById("menu-chef-comunidades");
-        const menuSugestoes = document.getElementById("menu-dev-sugestoes");
-        const menuDev = document.getElementById("menu-dev-supremo");
-        
-        if (menuChef && (r === "adm_student" || r === "dev_maximo")) {
-            menuChef.style.display = "block";
+    if (currentUser) {
+        if (area) area.innerHTML = `<span class="user-badge" style="color: white; font-weight:700; font-size: 0.85rem; margin-right: 10px;">👤 ${currentUser.usuario}</span> <button onclick="logout()" class="btn-primary-nav" style="background:#ef4444;">Sair</button>`;
+        if (labelMenu) labelMenu.innerText = `Olá, ${currentUser.usuario}!`;
+        if (badge) {
+            badge.innerText = currentUser.role.toUpperCase().replace("_", " ");
+            badge.className = "user-role-badge " + currentUser.role;
         }
+
+        const r = currentUser.role;
+        // Permissões Administrativas Escolares
+        if (r === "adm_student" || r === "dev_maximo") {
+            document.getElementById("menu-chef-comunidades").style.display = "block";
+        }
+        if (r === "direcao" || r === "dev_maximo") {
+            if (uploadBtn) uploadBtn.style.display = "block";
+        }
+        // Permissões Secretas de Dev Supremo
         if (r === "dev_maximo") {
-            if (menuSugestoes) menuSugestoes.style.display = "block";
-            if (menuDev) menuDev.style.display = "block";
+            document.getElementById("menu-dev-sugestoes").style.display = "block";
+            document.getElementById("menu-dev-supremo").style.display = "block";
             fetchSuggestionsCloud();
             updateDevMetrics();
+            renderDevTraffic();
         }
     } else {
-        if (badge) badge.innerText = "Visitante";
+        if (area) area.innerHTML = `<button class="btn-primary-nav" onclick="showModal('authModal')">Criar Perfil</button>`;
+        if (labelMenu) labelMenu.innerText = "Olá, Visitante!";
+        if (badge) {
+            badge.innerText = "Visitante";
+            badge.className = "user-role-badge";
+        }
     }
 }
 
@@ -175,165 +231,191 @@ function logout() {
 }
 
 /*******************************************************************************
- * 5. CONEXÃO LOCAL SIMULADA (VOTOS E SUGESTÕES)
+ * 5. FEED E CARROSSEL DE NOTÍCIAS DINÂMICO COM VALIDADE
  *******************************************************************************/
-function fetchVotesStatus() {
-    const vAgenda = localStorage.getItem("votos_agenda");
-    const vQuiz = localStorage.getItem("votos_quiz");
-    
-    const labelAgenda = document.getElementById("votos-agenda");
-    const labelQuiz = document.getElementById("votos-quiz");
-    
-    if (labelAgenda) labelAgenda.innerText = `${vAgenda} votos`;
-    if (labelQuiz) labelQuiz.innerText = `${vQuiz} votos`;
-}
+function renderNews() {
+    const list = JSON.parse(localStorage.getItem("esed_news")) || [];
+    const grid = document.getElementById("newsGrid");
+    const carousel = document.getElementById("newsCarousel");
+    const emptyState = document.getElementById("emptyNewsState");
 
-function registerVote(option) {
-    if (!currentUser) {
-        customAlert("Autenticação Necessária", "Precisas de criar uma conta para votar nas decisões da escola.", "erro");
+    // Limpar notícias fora do prazo (vencidas)
+    const activeNews = list.filter(item => {
+        return new Date(item.expiracao).getTime() > Date.now();
+    });
+
+    // Guardar lista limpa
+    if (activeNews.length !== list.length) {
+        localStorage.setItem("esed_news", JSON.stringify(activeNews));
+    }
+
+    if (activeNews.length === 0) {
+        grid.innerHTML = "";
+        carousel.innerHTML = "";
+        if (emptyState) emptyState.style.display = "block";
         return;
     }
-    
-    if (option === 'agenda') {
-        let atual = parseInt(localStorage.getItem("votos_agenda")) || 0;
-        localStorage.setItem("votos_agenda", (atual + 1).toString());
-    } else if (option === 'quiz') {
-        let atual = parseInt(localStorage.getItem("votos_quiz")) || 0;
-        localStorage.setItem("votos_quiz", (atual + 1).toString());
-    }
-    
-    customAlert("Voto Computado", "Obrigado por participares! Voto guardado localmente nesta demonstração.");
-    fetchVotesStatus();
-}
 
-function submitSuggestion() {
-    const txtArea = document.getElementById("suggestionText");
-    if (!txtArea || !txtArea.value) return;
+    if (emptyState) emptyState.style.display = "none";
 
-    const txt = txtArea.value;
-    const autorMsg = currentUser ? `${currentUser.nomeCompleto} (${currentUser.classe}-${currentUser.turma})` : "Anónimo";
-    
-    let sugestoes = JSON.parse(localStorage.getItem("sugestoes_locais")) || [];
-    sugestoes.push({ texto: txt, autor: autorMsg });
-    localStorage.setItem("sugestoes_locais", JSON.stringify(sugestoes));
-    
-    customAlert("Sucesso", "A tua sugestão foi guardada localmente neste dispositivo.");
-    txtArea.value = "";
-    closeModal("suggestModal");
-}
-
-function fetchSuggestionsCloud() {
-    const container = document.getElementById("suggestionsContainer");
-    if (!container) return;
-    
-    let sugestoes = JSON.parse(localStorage.getItem("sugestoes_locais")) || [];
-    if (sugestoes.length === 0) {
-        container.innerHTML = "<p style='color:var(--text-muted);'>Nenhuma sugestão enviada localmente ainda.</p>";
-    } else {
-        container.innerHTML = sugestoes.map(s => `
-            <div class="suggestion-item" style="border-bottom: 1px solid #e2e8f0; padding: 10px 0;">
-                <p style="font-style: italic;">"${s.texto}"</p>
-                <small style="color:var(--text-muted);">Autor: ${s.autor}</small>
+    // 1. Renderizar Carrossel (Destaques do Topo)
+    carousel.innerHTML = activeNews.map(item => `
+        <div class="carousel-card" style="background-image: url('${item.imagem}')" onclick="openNewsReader(${item.id})">
+            <div class="carousel-card-overlay">
+                <span class="user-role-badge">${item.categoria}</span>
+                <h4>${item.titulo}</h4>
             </div>
-        `).join('');
-    }
-}
+        </div>
+    `).join('');
 
-/*******************************************************************************
- * 6. GRÁFICOS DINÂMICOS (CHART.JS)
- *******************************************************************************/
-function initCharts() {
-    const chartAc = document.getElementById('academicChart');
-    const chartApp = document.getElementById('appPerformanceChart');
-    
-    if (!chartAc || !chartApp) return;
-
-    if (academicChartInstance) academicChartInstance.destroy();
-    if (appChartInstance) appChartInstance.destroy();
-
-    const ctxAcademic = chartAc.getContext('2d');
-    academicChartInstance = new Chart(ctxAcademic, {
-        type: 'line',
-        data: {
-            labels: ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul'],
-            datasets: [{
-                label: 'Média de Notas (0-20)',
-                data: [12, 14, 11, 15, 16, 14, 18],
-                borderColor: '#2563eb',
-                backgroundColor: 'rgba(37, 99, 235, 0.1)',
-                fill: true,
-                tension: 0.4,
-                borderWidth: 3
-            }]
-        },
-        options: { responsive: true, scales: { y: { min: 0, max: 20 } } }
-    });
-
-    const ctxApp = chartApp.getContext('2d');
-    appChartInstance = new Chart(ctxApp, {
-        type: 'bar',
-        data: {
-            labels: ['Quizes Ativos', 'Resumos Lidos', 'Fórum Atividade', 'Pontos Medalhas'],
-            datasets: [{
-                label: 'Nível de Engajamento',
-                data: [85, 40, 65, 90],
-                backgroundColor: ['#10b981', '#3b82f6', '#f59e0b', '#8b5cf6'],
-                borderRadius: 6
-            }]
-        },
-        options: { responsive: true }
-    });
-}
-
-/*******************************************************************************
- * 7. INTELIGÊNCIA COMPLEMENTAR (MODO OFFLINE & OUTROS)
- *******************************************************************************/
-function checkConnectionStatus() {
-    toggleOnlineStatus();
-}
-
-function toggleOnlineStatus() {
-    const notice = document.getElementById("offlineNotice");
-    if (notice) {
-        if (navigator.onLine) {
-            notice.style.display = "none";
-        } else {
-            notice.style.display = "flex";
-        }
-    }
-}
-
-function renderNews() {
-    const grid = document.getElementById("newsGrid");
-    if (!grid) return;
-    
-    const dadosNoticias = [
-        { id: 1, titulo: "Exames de Recorrência - ESED 2026", resumo: "O calendário completo das avaliações de recurso já se encontra disponível no placard principal da escola.", data: "13/07/2026", imagem: "https://images.unsplash.com/photo-1506784983877-45594efa4cbe?w=400" }
-    ];
-    
-    grid.innerHTML = dadosNoticias.map(item => `
-        <div class="news-card" onclick="customAlert('${item.titulo}', '${item.resumo}')" style="cursor:pointer;">
-            <img src="${item.imagem}" style="width:100%; height:160px; object-fit:cover;">
-            <div class="news-body" style="padding:16px;">
-                <span class="news-date" style="font-size:0.75rem; color:var(--text-muted);">📅 ${item.data}</span>
-                <h4 style="margin: 6px 0; color:var(--blue-primary);">${item.titulo}</h4>
-                <p style="font-size:0.9rem;">${item.resumo.substring(0, 65)}...</p>
+    // 2. Renderizar Grid Geral
+    grid.innerHTML = activeNews.map(item => `
+        <div class="news-card" onclick="openNewsReader(${item.id})">
+            <img src="${item.imagem}" alt="Capa da Notícia">
+            <div class="news-card-placeholder" style="display: none;"><i class="fas fa-bullhorn"></i></div>
+            <div class="news-body">
+                <span class="news-date">📅 ${item.data} • por ${item.autor}</span>
+                <h4>${item.titulo}</h4>
+                <p style="font-size: 0.85rem; color: var(--text-muted);">${item.conteudo.substring(0, 80)}...</p>
             </div>
         </div>
     `).join('');
 }
 
-function updateScheduleTable() {
-    customAlert("Horários", "Horários atualizados para a turma selecionada.");
-}
+function openNewsReader(id) {
+    const list = JSON.parse(localStorage.getItem("esed_news")) || [];
+    const news = list.find(item => item.id === id);
+    if (!news) return;
 
-function toggleMaintenanceMode() {
-    customAlert("Painel de Controle", "Modo Manutenção ativado temporariamente no protótipo.");
-}
+    const header = document.getElementById("readerHeader");
+    const body = document.getElementById("readerBody");
 
-function updateDevMetrics() {
-    const devUserCountLabel = document.getElementById("devUserCount");
-    if (devUserCountLabel) {
-        devUserCountLabel.innerHTML = `<i class="fas fa-server"></i> Banco de dados: <strong style="color:#f59e0b;">Demonstração Local Segura Ativa</strong>`;
+    if (header && body) {
+        header.innerHTML = `
+            <div class="reader-image" style="background-image: url('${news.imagem}'); height: 200px; background-size: cover; background-position: center; border-radius: 12px; margin-bottom: 16px;"></div>
+            <span class="user-role-badge">${news.categoria}</span>
+            <h2 style="margin: 12px 0 6px 0;">${news.titulo}</h2>
+            <small style="color: var(--text-muted); display: block; margin-bottom: 16px;">Publicado em ${news.data} • Autor: ${news.autor}</small>
+        `;
+        body.innerHTML = `<p style="line-height: 1.6; font-size: 1rem;">${news.conteudo.replace(/\n/g, "<br><br>")}</p>`;
+        showModal("newsReaderModal");
     }
 }
+
+function publishNews(event) {
+    event.preventDefault();
+    const title = document.getElementById("newsTitle").value;
+    const category = document.getElementById("newsCategory").value;
+    const cover = document.getElementById("newsCoverImage").value || "https://images.unsplash.com/photo-1546410531-bb4caa6b424d?w=600";
+    const content = document.getElementById("newsContent").value;
+    const validityDays = parseInt(document.getElementById("newsValidity").value);
+
+    const list = JSON.parse(localStorage.getItem("esed_news")) || [];
+    const newId = list.length > 0 ? Math.max(...list.map(i => i.id)) + 1 : 1;
+
+    const expiracaoDate = new Date();
+    expiracaoDate.setDate(expiracaoDate.getDate() + validityDays);
+
+    const newArticle = {
+        id: newId,
+        titulo: title,
+        categoria: category,
+        imagem: cover,
+        conteudo: content,
+        autor: currentUser ? currentUser.usuario : "Direção ESED",
+        data: new Date().toLocaleDateString('pt-PT'),
+        expiracao: expiracaoDate.toISOString()
+    };
+
+    list.unshift(newArticle);
+    localStorage.setItem("esed_news", JSON.stringify(list));
+    
+    // Resetar Formulário e fechar Modal
+    document.getElementById("newsTitle").value = "";
+    document.getElementById("newsCategory").value = "";
+    document.getElementById("newsCoverImage").value = "";
+    document.getElementById("newsContent").value = "";
+    
+    closeModal("newsEditorModal");
+    renderNews();
+    customAlert("Sucesso!", "A tua notícia foi publicada no placard escolar e expirará em " + validityDays + " dias.", "sucesso");
+}
+
+/*******************************************************************************
+ * 6. SISTEMA DE HORÁRIOS COM TABELA DE SIMULAÇÃO DINÂMICA
+ *******************************************************************************/
+function updateScheduleTable() {
+    const selectedClass = document.getElementById("scheduleClassSelect").value;
+    const tbody = document.getElementById("scheduleTableBody");
+    if (!tbody) return;
+
+    const dataSchedules = {
+        "12a1": [
+            { hora: "07:00 - 07:45", s: "Matemática", t: "Física", q: "Matemática", q_sub: "Biologia", s_sub: "Português" },
+            { hora: "07:50 - 08:35", s: "Matemática", t: "Física", q: "Filosofia", q_sub: "Biologia", s_sub: "Português" },
+            { hora: "08:45 - 09:30", s: "Português", t: "Química", q: "Filosofia", q_sub: "Matemática", s_sub: "Inglês" }
+        ],
+        "12b1": [
+            { hora: "13:00 - 13:45", s: "História", t: "Geografia", q: "Português", q_sub: "Inglês", s_sub: "Geografia" },
+            { hora: "13:50 - 14:35", s: "História", t: "Português", q: "Filosofia", q_sub: "Inglês", s_sub: "História" },
+            { hora: "14:45 - 15:30", s: "Geografia", t: "Português", q: "Filosofia", q_sub: "História", s_sub: "Educação Física" }
+        ],
+        "11a1": [
+            { hora: "07:00 - 07:45", s: "Química", t: "Biologia", q: "Português", q_sub: "Física", s_sub: "Matemática" },
+            { hora: "07:50 - 08:35", s: "Química", t: "Biologia", q: "Inglês", q_sub: "Física", s_sub: "Matemática" },
+            { hora: "08:45 - 09:30", s: "Matemática", t: "Português", q: "Inglês", q_sub: "Química", s_sub: "Filosofia" }
+        ]
+    };
+
+    const schedule = dataSchedules[selectedClass] || [];
+    tbody.innerHTML = schedule.map(row => `
+        <tr>
+            <td><strong>${row.hora}</strong></td>
+            <td>${row.s}</td>
+            <td>${row.t}</td>
+            <td>${row.q}</td>
+            <td>${row.q_sub}</td>
+            <td>${row.s_sub}</td>
+        </tr>
+    `).join('');
+}
+
+/*******************************************************************************
+ * 7. BIBLIOTECA PREMIUM COM VISUAL 3D E SIMULAÇÃO DE DOWNLOAD
+ *******************************************************************************/
+function renderLibrary() {
+    const list = JSON.parse(localStorage.getItem("esed_books")) || [];
+    const featuredRow = document.getElementById("featuredBooks");
+    const booksGrid = document.getElementById("booksGrid");
+
+    if (!booksGrid) return;
+
+    // Filtragem por categoria ativa
+    const filtered = list.filter(b => {
+        return activeCategory === 'todos' || b.categoria === activeCategory;
+    });
+
+    // 1. Renderizar os Destaques (Sempre Literatura/Manuais Populares)
+    if (featuredRow) {
+        const featured = list.slice(0, 3); // Primeiros 3 livros como destaque
+        featuredRow.innerHTML = featured.map(b => `
+            <div class="book-3d-card" onclick="openBookDetails(${b.id})">
+                <div class="book-3d-cover" style="background-image: url('${b.capa || 'https://images.unsplash.com/photo-1544947950-fa07a98d237f?w=300'}')"></div>
+                <div class="book-cover-placeholder" style="display:none;"><i class="fas fa-book"></i></div>
+                <div class="book-3d-title">${b.titulo}</div>
+            </div>
+        `).join('');
+    }
+
+    // 2. Renderizar o Acervo Geral
+    if (filtered.length === 0) {
+        booksGrid.innerHTML = "<p class='description'>Nenhum livro encontrado nesta categoria.</p>";
+        return;
+    }
+
+    booksGrid.innerHTML = filtered.map(b => `
+        <div class="book-normal-card" onclick="openBookDetails(${b.id})">
+            <div class="book-mini-cover" style="background-image: url('${b.capa || 'https://images.unsplash.com/photo-1544947950-fa07a98d237f?w=300'}')"></div>
+            <div class="book-info-col">
+                <h4>${b.titulo}</h4>
+                <small>${b.autor} • <strong>${b.tamanho}</strong></sm
