@@ -1,16 +1,17 @@
 /*******************************************************************************
  * 1. CONFIGURAÇÃO DO SUPABASE (BANCO DE DADOS NA NUVEM)
- * Substitua as credenciais abaixo com as da sua conta gratuita do Supabase
  *******************************************************************************/
 const SUPABASE_URL = "https://SEU_PROJETO.supabase.co"; 
 const SUPABASE_KEY = "SUA_CHAVE_ANON_DO_SUPABASE";
 
-let supabase = null;
+// Mudamos o nome para 'supabaseClient' para evitar conflito com a biblioteca do HTML
+let supabaseClient = null;
 
-// Só inicializa o banco se as chaves forem modificadas pelo utilizador e a biblioteca existir
 try {
+    // Verifica se a biblioteca foi carregada no HTML e se as chaves foram preenchidas
     if (SUPABASE_URL && !SUPABASE_URL.includes("SEU_PROJETO") && typeof supabase !== 'undefined') {
-        supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        // Inicializa usando a biblioteca global (supabase) mas guarda em 'supabaseClient'
+        supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     }
 } catch (e) {
     console.warn("Falha ao inicializar o Supabase. Rodando em modo de simulação local.", e);
@@ -84,7 +85,7 @@ function switchTab(tabId) {
  *******************************************************************************/
 function customAlert(titulo, mensagem, tipo = 'info') {
     document.getElementById("customAlertTitle").innerText = titulo;
-    document.getElementById("customAlertMessage").innerText = mensagem;
+    document.getElementById("customAlertMessage").innerText = message = mensagem;
     
     const icon = document.getElementById("customAlertIcon");
     if (tipo === 'erro') {
@@ -170,8 +171,8 @@ function logout() {
  *******************************************************************************/
 async function fetchVotesStatus() {
     try {
-        if (!supabase) throw new Error("Sem conexão");
-        const { data, error } = await supabase.from('votacoes').select('*');
+        if (!supabaseClient) throw new Error("Sem conexão");
+        const { data, error } = await supabaseClient.from('votacoes').select('*');
         if (error) throw error;
         
         data.forEach(voto => {
@@ -191,8 +192,8 @@ async function registerVote(option) {
         return;
     }
     try {
-        if (!supabase) throw new Error("Sem conexão");
-        const { error } = await supabase.rpc('incrementar_voto', { row_opcao: option });
+        if (!supabaseClient) throw new Error("Sem conexão");
+        const { error } = await supabaseClient.rpc('incrementar_voto', { row_opcao: option });
         if (error) throw error;
         customAlert("Voto Computado", "Obrigado por participares na evolução da ESED!");
         await fetchVotesStatus();
@@ -208,8 +209,8 @@ async function submitSuggestion() {
     const autorMsg = currentUser ? `${currentUser.nomeCompleto} (${currentUser.classe}-${currentUser.turma})` : "Anónimo";
     
     try {
-        if (!supabase) throw new Error("Sem conexão");
-        const { error } = await supabase.from('sugestoes').insert([{ texto: txt, autor: autorMsg }]);
+        if (!supabaseClient) throw new Error("Sem conexão");
+        const { error } = await supabaseClient.from('sugestoes').insert([{ texto: txt, autor: autorMsg }]);
         if (error) throw error;
         
         customAlert("Mensagem Enviada", "A tua sugestão foi guardada de forma segura na nuvem.");
@@ -226,8 +227,8 @@ async function fetchSuggestionsCloud() {
     const container = document.getElementById("suggestionsContainer");
     if (!container) return;
     try {
-        if (!supabase) throw new Error("Sem conexão");
-        const { data, error } = await supabase.from('sugestoes').select('*').order('id', { ascending: false });
+        if (!supabaseClient) throw new Error("Sem conexão");
+        const { data, error } = await supabaseClient.from('sugestoes').select('*').order('id', { ascending: false });
         if (error) throw error;
         container.innerHTML = data.map(s => `<div class="suggestion-item"><p>"${s.texto}"</p><small>De: ${s.autor}</small></div>`).join('');
     } catch (e) {
@@ -321,7 +322,7 @@ function toggleMaintenanceMode() {
 }
 
 function updateDevMetrics() {
-    if (supabase) {
+    if (supabaseClient) {
         document.getElementById("devUserCount").innerHTML = `<i class="fas fa-server"></i> Banco de dados na Nuvem: <strong style="color:#10b981;">Conectado via API</strong>`;
     } else {
         document.getElementById("devUserCount").innerHTML = `<i class="fas fa-server"></i> Banco de dados na Nuvem: <strong style="color:#f59e0b;">Modo de Simulação Ativo</strong>`;
