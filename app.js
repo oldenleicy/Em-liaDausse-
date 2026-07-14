@@ -4,7 +4,17 @@
  *******************************************************************************/
 const SUPABASE_URL = "https://SEU_PROJETO.supabase.co"; 
 const SUPABASE_KEY = "SUA_CHAVE_ANON_DO_SUPABASE";
-const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+let supabase = null;
+
+// Só inicializa o banco se as chaves forem modificadas pelo utilizador e a biblioteca existir
+try {
+    if (SUPABASE_URL && !SUPABASE_URL.includes("SEU_PROJETO") && typeof supabase !== 'undefined') {
+        supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    }
+} catch (e) {
+    console.warn("Falha ao inicializar o Supabase. Rodando em modo de simulação local.", e);
+}
 
 // Estado Global do Aplicativo
 let currentUser = JSON.parse(localStorage.getItem("esed_user")) || null;
@@ -90,8 +100,8 @@ function customAlert(titulo, mensagem, tipo = 'info') {
 /*******************************************************************************
  * 4. SEGURANÇA, AUTENTICAÇÃO E REGRAS DE ACESSO (RBAC)
  *******************************************************************************/
-function handleAuth(e) {
-    e.preventDefault();
+function handleAuth(event) {
+    event.preventDefault();
     const nomeCompleto = document.getElementById("authNomeCompleto").value;
     const email = document.getElementById("authEmail").value.trim().toLowerCase();
     const chave = document.getElementById("authChave").value.trim();
@@ -160,6 +170,7 @@ function logout() {
  *******************************************************************************/
 async function fetchVotesStatus() {
     try {
+        if (!supabase) throw new Error("Sem conexão");
         const { data, error } = await supabase.from('votacoes').select('*');
         if (error) throw error;
         
@@ -168,7 +179,7 @@ async function fetchVotesStatus() {
             if (voto.opcao === 'quiz') document.getElementById("votos-quiz").innerText = `${voto.quantidade} votos`;
         });
     } catch (err) {
-        // Fallback local caso o Supabase não esteja configurado ainda
+        // Fallback local se o Supabase não estiver configurado
         document.getElementById("votos-agenda").innerText = "14 votos";
         document.getElementById("votos-quiz").innerText = "32 votos";
     }
@@ -180,12 +191,13 @@ async function registerVote(option) {
         return;
     }
     try {
+        if (!supabase) throw new Error("Sem conexão");
         const { error } = await supabase.rpc('incrementar_voto', { row_opcao: option });
         if (error) throw error;
         customAlert("Voto Computado", "Obrigado por participares na evolução da ESED!");
         await fetchVotesStatus();
     } catch (err) {
-        customAlert("Votação Simulação", "Voto computado localmente no protótipo!");
+        customAlert("Votação Simulação", "Voto computado localmente no protótipo de testes!");
     }
 }
 
@@ -196,6 +208,7 @@ async function submitSuggestion() {
     const autorMsg = currentUser ? `${currentUser.nomeCompleto} (${currentUser.classe}-${currentUser.turma})` : "Anónimo";
     
     try {
+        if (!supabase) throw new Error("Sem conexão");
         const { error } = await supabase.from('sugestoes').insert([{ texto: txt, autor: autorMsg }]);
         if (error) throw error;
         
@@ -204,6 +217,7 @@ async function submitSuggestion() {
         closeModal("suggestModal");
     } catch (err) {
         customAlert("Sucesso", "Sugestão salva localmente no ambiente de testes!");
+        document.getElementById("suggestionText").value = "";
         closeModal("suggestModal");
     }
 }
@@ -212,6 +226,7 @@ async function fetchSuggestionsCloud() {
     const container = document.getElementById("suggestionsContainer");
     if (!container) return;
     try {
+        if (!supabase) throw new Error("Sem conexão");
         const { data, error } = await supabase.from('sugestoes').select('*').order('id', { ascending: false });
         if (error) throw error;
         container.innerHTML = data.map(s => `<div class="suggestion-item"><p>"${s.texto}"</p><small>De: ${s.autor}</small></div>`).join('');
@@ -298,7 +313,6 @@ function renderNews() {
 }
 
 function updateScheduleTable() {
-    // Função expansível para alterar os dados da pauta dinâmica com base na seleção
     customAlert("Horários", "Horários atualizados para a turma selecionada.");
 }
 
@@ -307,5 +321,9 @@ function toggleMaintenanceMode() {
 }
 
 function updateDevMetrics() {
-    document.getElementById("devUserCount").innerHTML = `<i class="fas fa-server"></i> Banco de dados na Nuvem: <strong>Conectado via API</strong>`;
+    if (supabase) {
+        document.getElementById("devUserCount").innerHTML = `<i class="fas fa-server"></i> Banco de dados na Nuvem: <strong style="color:#10b981;">Conectado via API</strong>`;
+    } else {
+        document.getElementById("devUserCount").innerHTML = `<i class="fas fa-server"></i> Banco de dados na Nuvem: <strong style="color:#f59e0b;">Modo de Simulação Ativo</strong>`;
+    }
 }
