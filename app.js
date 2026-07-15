@@ -428,4 +428,279 @@ function filterCategory(category) {
     activeCategory = category;
     document.querySelectorAll('.category-pill').forEach(pill => {
         pill.classList.remove('active');
-        if (pill.innerText.toLowerCase().includes(category) || (category === 'todos' && pill.innerText.toLowerCase() === 
+        if (pill.innerText.toLowerCase().includes(category) || (category === 'todos' && pill.innerText.toLowerCase() === 'todos')) {
+            pill.classList.add('active');
+        }
+    });
+    renderLibrary();
+}
+
+function filterLibrary() {
+    const searchVal = document.getElementById("librarySearch").value.toLowerCase();
+    const list = JSON.parse(localStorage.getItem("esed_books")) || [];
+    const booksGrid = document.getElementById("booksGrid");
+    
+    if (!booksGrid) return;
+
+    const filtered = list.filter(b => {
+        return (activeCategory === 'todos' || b.categoria === activeCategory) &&
+               (b.titulo.toLowerCase().includes(searchVal) || b.autor.toLowerCase().includes(searchVal));
+    });
+
+    booksGrid.innerHTML = filtered.map(b => `
+        <div class="book-normal-card" onclick="openBookDetails(${b.id})">
+            <div class="book-mini-cover" style="background-image: url('${b.capa || 'https://images.unsplash.com/photo-1544947950-fa07a98d237f?w=300'}')"></div>
+            <div class="book-info-col">
+                <h4>${b.titulo}</h4>
+                <small>${b.autor} • <strong>${b.tamanho}</strong></small>
+            </div>
+        </div>
+    `).join('');
+}
+
+function openBookDetails(id) {
+    const list = JSON.parse(localStorage.getItem("esed_books")) || [];
+    const book = list.find(b => b.id === id);
+    if (!book) return;
+
+    const container = document.getElementById("bookDetailsContainer");
+    if (container) {
+        container.innerHTML = `
+            <div style="display: flex; gap: 16px; margin-bottom: 16px;">
+                <div style="width: 100px; height: 140px; background-image: url('${book.capa}'); background-size: cover; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.2);"></div>
+                <div>
+                    <h3>${book.titulo}</h3>
+                    <p style="color: var(--text-muted); font-size: 0.9rem;">${book.autor}</p>
+                    <span class="user-role-badge" style="margin-top: 8px;">${book.classe}</span>
+                    <p style="margin-top: 8px; font-weight: bold; font-size: 0.85rem;">Tamanho: ${book.tamanho}</p>
+                </div>
+            </div>
+            <p style="font-size: 0.9rem; line-height: 1.5; margin-bottom: 16px;"><strong>Sinopse:</strong> ${book.sinopse}</p>
+            <div style="background: var(--bg-light); padding: 12px; border-radius: 8px; margin-bottom: 16px;">
+                <h5 style="margin-bottom: 6px;"><i class="fas fa-bolt text-gold"></i> Estudo Rápido (Poupa Dados):</h5>
+                <p style="font-size: 0.85rem; color: var(--text-muted);">${book.resumo}</p>
+            </div>
+            <button class="btn-primary full-width" onclick="simulateDownload('${book.titulo}')"><i class="fas fa-download"></i> Baixar PDF Completo</button>
+        `;
+        showModal("bookDetailsModal");
+    }
+}
+
+function simulateDownload(title) {
+    const container = document.getElementById("downloadProgressBarContainer");
+    const bar = document.getElementById("downloadProgressBar");
+    if (!container || !bar) return;
+
+    container.style.display = "block";
+    let progress = 0;
+    const interval = setInterval(() => {
+        progress += 10;
+        bar.style.width = progress + "%";
+        if (progress >= 100) {
+            clearInterval(interval);
+            setTimeout(() => {
+                container.style.display = "none";
+                bar.style.width = "0%";
+                customAlert("Download Concluído", `O livro "${title}" foi salvo na memória do teu dispositivo local com sucesso!`, "sucesso");
+            }, 500);
+        }
+    }, 150);
+}
+
+function uploadBook(event) {
+    event.preventDefault();
+    const title = document.getElementById("bookTitle").value;
+    const author = document.getElementById("bookAuthor").value;
+    const category = document.getElementById("bookCategory").value;
+    const bClass = document.getElementById("bookClass").value || "Geral";
+    const size = document.getElementById("bookSize").value;
+    const cover = document.getElementById("bookCover").value || "https://images.unsplash.com/photo-1544947950-fa07a98d237f?w=300";
+    const sinopse = document.getElementById("bookSinopse").value;
+    const quickRead = document.getElementById("bookQuickRead").value;
+
+    const list = JSON.parse(localStorage.getItem("esed_books")) || [];
+    const newId = list.length > 0 ? Math.max(...list.map(b => b.id)) + 1 : 1;
+
+    const newBook = {
+        id: newId,
+        titulo: title,
+        autor: author,
+        categoria: category,
+        classe: bClass,
+        tamanho: size,
+        capa: cover,
+        sinopse: sinopse,
+        resumo: quickRead
+    };
+
+    list.push(newBook);
+    localStorage.setItem("esed_books", JSON.stringify(list));
+    event.target.reset();
+    closeModal("bookUploadModal");
+    renderLibrary();
+    customAlert("Cadastrado!", `O livro "${title}" foi adicionado com sucesso ao acervo.`, "sucesso");
+}
+
+/*******************************************************************************
+ * 8. SONDAGENS E VOTOS
+ *******************************************************************************/
+function fetchVotesStatus() {
+    const agendaVal = localStorage.getItem("votos_agenda") || "24";
+    const quizVal = localStorage.getItem("votos_quiz") || "42";
+    
+    const countAgenda = document.getElementById("votos-agenda");
+    const countQuiz = document.getElementById("votos-quiz");
+
+    if (countAgenda) countAgenda.innerText = agendaVal + " votos";
+    if (countQuiz) countQuiz.innerText = quizVal + " votos";
+}
+
+function registerVote(type) {
+    if (type === 'agenda') {
+        let val = parseInt(localStorage.getItem("votos_agenda")) || 24;
+        val++;
+        localStorage.setItem("votos_agenda", val.toString());
+    } else if (type === 'quiz') {
+        let val = parseInt(localStorage.getItem("votos_quiz")) || 42;
+        val++;
+        localStorage.setItem("votos_quiz", val.toString());
+    }
+    fetchVotesStatus();
+    customAlert("Voto Registado!", "O teu voto foi contabilizado com sucesso. Obrigado por participares!", "sucesso");
+}
+
+/*******************************************************************************
+ * 9. CONFIGURAÇÃO DE GRÁFICOS (CHART.JS)
+ *******************************************************************************/
+function initCharts() {
+    const ctxAcademic = document.getElementById('academicChart');
+    const ctxPerf = document.getElementById('appPerformanceChart');
+
+    if (!ctxAcademic || !ctxPerf) return;
+
+    // Destruir instâncias existentes para evitar sobreposição
+    if (academicChartInstance) academicChartInstance.destroy();
+    if (appChartInstance) appChartInstance.destroy();
+
+    academicChartInstance = new Chart(ctxAcademic, {
+        type: 'line',
+        data: {
+            labels: ['Trimestre 1', 'Trimestre 2', 'Trimestre 3', 'Exames'],
+            datasets: [{
+                label: 'Média de Notas (ESED)',
+                data: [13.4, 14.8, 15.6, 16.2],
+                borderColor: '#1e3a8a',
+                backgroundColor: 'rgba(30, 58, 138, 0.1)',
+                tension: 0.4
+            }]
+        },
+        options: { responsive: true, maintainAspectRatio: false }
+    });
+
+    appChartInstance = new Chart(ctxPerf, {
+        type: 'bar',
+        data: {
+            labels: ['Seg', 'Ter', 'Qua', 'Qui', 'Sex'],
+            datasets: [{
+                label: 'Pesquisas de Livros',
+                data: [120, 190, 300, 250, 150],
+                backgroundColor: '#3b82f6'
+            }]
+        },
+        options: { responsive: true, maintainAspectRatio: false }
+    });
+}
+
+/*******************************************************************************
+ * 10. DETEÇÃO DE CONEXÃO E DEFINIÇÕES DO APP (DARK MODE, POUPANÇA DE DADOS)
+ *******************************************************************************/
+function checkConnectionStatus() {
+    toggleOnlineStatus();
+}
+
+function toggleOnlineStatus() {
+    const notice = document.getElementById("offlineNotice");
+    if (notice) {
+        if (navigator.onLine) {
+            notice.style.display = "none";
+        } else {
+            notice.style.display = "block";
+        }
+    }
+}
+
+function toggleDarkMode() {
+    const checkbox = document.getElementById("settingDarkMode");
+    if (checkbox.checked) {
+        document.documentElement.setAttribute('data-theme', 'dark');
+        localStorage.setItem("esed_theme", "dark");
+    } else {
+        document.documentElement.removeAttribute('data-theme');
+        localStorage.setItem("esed_theme", "light");
+    }
+}
+
+function toggleDataSaver() {
+    const checkbox = document.getElementById("settingDataSaver");
+    if (checkbox.checked) {
+        document.documentElement.setAttribute('data-datasaver', 'active');
+        localStorage.setItem("esed_datasaver", "active");
+    } else {
+        document.documentElement.removeAttribute('data-datasaver');
+        localStorage.setItem("esed_datasaver", "inactive");
+    }
+}
+
+function applyStoredSettings() {
+    const theme = localStorage.getItem("esed_theme");
+    const datasaver = localStorage.getItem("esed_datasaver");
+
+    const darkCheckbox = document.getElementById("settingDarkMode");
+    const dataCheckbox = document.getElementById("settingDataSaver");
+
+    if (theme === "dark") {
+        document.documentElement.setAttribute('data-theme', 'dark');
+        if (darkCheckbox) darkCheckbox.checked = true;
+    }
+    if (datasaver === "active") {
+        document.documentElement.setAttribute('data-datasaver', 'active');
+        if (dataCheckbox) dataCheckbox.checked = true;
+    }
+}
+
+function clearLocalCache() {
+    if (confirm("Tens a certeza que queres redefinir a aplicação? Todos os dados locais e contas guardadas serão excluídos.")) {
+        localStorage.clear();
+        location.reload();
+    }
+}
+
+/*******************************************************************************
+ * 11. ÁREA DEV: MÉTRICAS E MONITORIZAÇÃO DE SESSÃO
+ *******************************************************************************/
+function updateDevMetrics() {
+    const countUsers = document.getElementById("devUserCount");
+    if (countUsers) {
+        const list = JSON.parse(localStorage.getItem("esed_books")) || [];
+        countUsers.innerText = `4 Utilizadores Ativos / ${list.length} Livros`;
+    }
+}
+
+function renderDevTraffic() {
+    const tbody = document.getElementById("devUserTrafficBody");
+    if (tbody) {
+        tbody.innerHTML = defaultTraffic.map(t => `
+            <tr>
+                <td><strong>${t.nome}</strong></td>
+                <td>${t.classe}</td>
+                <td>${t.nivel}</td>
+                <td><code style="background:rgba(0,0,0,0.05); padding:2px 6px; border-radius:4px;">${t.ip}</code></td>
+                <td>${t.dispositivo}</td>
+            </tr>
+        `).join('');
+    }
+}
+
+function toggleMaintenanceMode() {
+    customAlert("Consola Dev", "Modo Manutenção ativado para simulação. Apenas desenvolvedores supremos conseguem aceder agora.", "info");
+}
