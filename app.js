@@ -60,9 +60,24 @@ window.onload = function() {
     fetchVotesStatus();
     updateUserUI();
     applyStoredSettings();
+    updateScheduleTable(); // Garante que a tabela inicia preenchida
     
     window.addEventListener('online', toggleOnlineStatus);
     window.addEventListener('offline', toggleOnlineStatus);
+
+    // Sugestão de Fecho Inteligente de Modais (Clicando fora)
+    window.addEventListener('click', function(event) {
+        if (event.target.classList.contains('modal')) {
+            event.target.style.display = 'none';
+        }
+    });
+
+    // Fechar com a tecla ESC
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'Escape') {
+            document.querySelectorAll('.modal').forEach(modal => modal.style.display = 'none');
+        }
+    });
 };
 
 /*******************************************************************************
@@ -88,7 +103,11 @@ function toggleMenu() {
 
 function showModal(id) {
     const modal = document.getElementById(id);
-    if (modal) modal.style.display = 'flex';
+    if (modal) {
+        modal.style.display = 'flex'; // Alinhado com o Flexbox do CSS para centralizar
+    } else {
+        console.error(`Erro: Modal com ID "${id}" não foi encontrado no HTML.`);
+    }
 }
 
 function closeModal(id) {
@@ -115,29 +134,10 @@ function switchTab(tabId) {
 }
 
 /*******************************************************************************
- * 3. ALERTA CUSTOMIZADO (RELAXADO E BONITO)
+ * 3. ALERTA CUSTOMIZADO (RELAXADO E BONITO) - Opcional se usar modal customizado
  *******************************************************************************/
 function customAlert(titulo, mensagem, tipo = 'info') {
-    const alertTitle = document.getElementById("customAlertTitle");
-    const alertMessage = document.getElementById("customAlertMessage");
-    const icon = document.getElementById("customAlertIcon");
-    
-    if (alertTitle && alertMessage && icon) {
-        alertTitle.innerText = titulo;
-        alertMessage.innerText = mensagem;
-        
-        if (tipo === 'erro') {
-            icon.className = "fas fa-exclamation-triangle";
-            icon.style.color = "#ef4444";
-        } else if (tipo === 'sucesso') {
-            icon.className = "fas fa-check-circle";
-            icon.style.color = "#10b981";
-        } else {
-            icon.className = "fas fa-info-circle";
-            icon.style.color = "#3b82f6";
-        }
-        showModal("customAlertModal");
-    }
+    alert(`${titulo.toUpperCase()}\n\n${mensagem}`);
 }
 
 /*******************************************************************************
@@ -185,10 +185,14 @@ function updateUserUI() {
     const badge = document.getElementById("userRoleBadge");
     const uploadBtn = document.getElementById("adminUploadBookBtn");
     
-    // Ocultar abas administrativas por padrão
-    document.getElementById("menu-chef-comunidades").style.display = "none";
-    document.getElementById("menu-dev-sugestoes").style.display = "none";
-    document.getElementById("menu-dev-supremo").style.display = "none";
+    // Garantir que os elementos existem antes de alterar o display
+    const menuChef = document.getElementById("menu-chef-comunidades");
+    const menuDevSug = document.getElementById("menu-dev-sugestoes");
+    const menuDevSup = document.getElementById("menu-dev-supremo");
+
+    if (menuChef) menuChef.style.display = "none";
+    if (menuDevSug) menuDevSug.style.display = "none";
+    if (menuDevSup) menuDevSup.style.display = "none";
     if (uploadBtn) uploadBtn.style.display = "none";
 
     if (currentUser) {
@@ -201,17 +205,16 @@ function updateUserUI() {
 
         const r = currentUser.role;
         // Permissões Administrativas Escolares
-        if (r === "adm_student" || r === "dev_maximo") {
-            document.getElementById("menu-chef-comunidades").style.display = "block";
+        if ((r === "adm_student" || r === "dev_maximo") && menuChef) {
+            menuChef.style.display = "block";
         }
-        if (r === "direcao" || r === "dev_maximo") {
-            if (uploadBtn) uploadBtn.style.display = "block";
+        if ((r === "direcao" || r === "dev_maximo") && uploadBtn) {
+            uploadBtn.style.display = "block";
         }
         // Permissões Secretas de Dev Supremo
         if (r === "dev_maximo") {
-            document.getElementById("menu-dev-sugestoes").style.display = "block";
-            document.getElementById("menu-dev-supremo").style.display = "block";
-            fetchSuggestionsCloud();
+            if (menuDevSug) menuDevSug.style.display = "block";
+            if (menuDevSup) menuDevSup.style.display = "block";
             updateDevMetrics();
             renderDevTraffic();
         }
@@ -239,12 +242,13 @@ function renderNews() {
     const carousel = document.getElementById("newsCarousel");
     const emptyState = document.getElementById("emptyNewsState");
 
+    if (!grid || !carousel) return;
+
     // Limpar notícias fora do prazo (vencidas)
     const activeNews = list.filter(item => {
         return new Date(item.expiracao).getTime() > Date.now();
     });
 
-    // Guardar lista limpa
     if (activeNews.length !== list.length) {
         localStorage.setItem("esed_news", JSON.stringify(activeNews));
     }
@@ -258,7 +262,7 @@ function renderNews() {
 
     if (emptyState) emptyState.style.display = "none";
 
-    // 1. Renderizar Carrossel (Destaques do Topo)
+    // 1. Renderizar Carrossel
     carousel.innerHTML = activeNews.map(item => `
         <div class="carousel-card" style="background-image: url('${item.imagem}')" onclick="openNewsReader(${item.id})">
             <div class="carousel-card-overlay">
@@ -330,11 +334,8 @@ function publishNews(event) {
     list.unshift(newArticle);
     localStorage.setItem("esed_news", JSON.stringify(list));
     
-    // Resetar Formulário e fechar Modal
-    document.getElementById("newsTitle").value = "";
-    document.getElementById("newsCategory").value = "";
-    document.getElementById("newsCoverImage").value = "";
-    document.getElementById("newsContent").value = "";
+    // Resetar Formulário
+    event.target.reset();
     
     closeModal("newsEditorModal");
     renderNews();
@@ -345,7 +346,9 @@ function publishNews(event) {
  * 6. SISTEMA DE HORÁRIOS COM TABELA DE SIMULAÇÃO DINÂMICA
  *******************************************************************************/
 function updateScheduleTable() {
-    const selectedClass = document.getElementById("scheduleClassSelect").value;
+    const select = document.getElementById("scheduleClassSelect");
+    if (!select) return;
+    const selectedClass = select.value;
     const tbody = document.getElementById("scheduleTableBody");
     if (!tbody) return;
 
@@ -381,7 +384,7 @@ function updateScheduleTable() {
 }
 
 /*******************************************************************************
- * 7. BIBLIOTECA PREMIUM COM VISUAL 3D E SIMULAÇÃO DE DOWNLOAD
+ * 7. BIBLIOTECA PREMIUM E PESQUISA
  *******************************************************************************/
 function renderLibrary() {
     const list = JSON.parse(localStorage.getItem("esed_books")) || [];
@@ -390,32 +393,39 @@ function renderLibrary() {
 
     if (!booksGrid) return;
 
-    // Filtragem por categoria ativa
     const filtered = list.filter(b => {
         return activeCategory === 'todos' || b.categoria === activeCategory;
     });
 
-    // 1. Renderizar os Destaques (Sempre Literatura/Manuais Populares)
     if (featuredRow) {
-        const featured = list.slice(0, 3); // Primeiros 3 livros como destaque
+        const featured = list.slice(0, 3);
         featuredRow.innerHTML = featured.map(b => `
             <div class="book-3d-card" onclick="openBookDetails(${b.id})">
                 <div class="book-3d-cover" style="background-image: url('${b.capa || 'https://images.unsplash.com/photo-1544947950-fa07a98d237f?w=300'}')"></div>
-                <div class="book-cover-placeholder" style="display:none;"><i class="fas fa-book"></i></div>
                 <div class="book-3d-title">${b.titulo}</div>
             </div>
         `).join('');
     }
 
-    // 2. Renderizar o Acervo Geral
     if (filtered.length === 0) {
-        booksGrid.innerHTML = "<p class='description'>Nenhum livro encontrado nesta categoria.</p>";
+        booksGrid.innerHTML = "<p>Nenhum livro encontrado nesta categoria.</p>";
         return;
     }
 
+    // AQUI O CÓDIGO CORRIGIDO E DEVIDAMENTE FECHADO!
     booksGrid.innerHTML = filtered.map(b => `
         <div class="book-normal-card" onclick="openBookDetails(${b.id})">
             <div class="book-mini-cover" style="background-image: url('${b.capa || 'https://images.unsplash.com/photo-1544947950-fa07a98d237f?w=300'}')"></div>
             <div class="book-info-col">
                 <h4>${b.titulo}</h4>
-                <small>${b.autor} • <strong>${b.tamanho}</strong></sm
+                <small>${b.autor} • <strong>${b.tamanho}</strong></small>
+            </div>
+        </div>
+    `).join('');
+}
+
+function filterCategory(category) {
+    activeCategory = category;
+    document.querySelectorAll('.category-pill').forEach(pill => {
+        pill.classList.remove('active');
+        if (pill.innerText.toLowerCase().includes(category) || (category === 'todos' && pill.innerText.toLowerCase() === 
